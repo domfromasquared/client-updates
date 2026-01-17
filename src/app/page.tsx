@@ -1,55 +1,79 @@
-"use client";
+// src/app/page.tsx
+import Link from "next/link";
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/status`,
-      },
-    });
-
-    setSent(true);
-    setLoading(false);
-  }
-
+export default function HomePage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-white px-6">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 p-8 shadow-sm">
-        <h1 className="text-3xl font-bold text-slate-900">Client Login</h1>
-
-        {!sent ? (
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
-            <input
-              type="email"
-              required
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900"
-            />
-            <button
-              disabled={loading}
-              className="w-full rounded-xl bg-slate-900 py-3 text-white font-semibold disabled:opacity-50"
-            >
-              {loading ? "Sending…" : "Send login link"}
-            </button>
-          </form>
-        ) : (
-          <p className="mt-6 text-slate-700">
-            If you’re authorized, check your email for a login link.
+    <main className="min-h-screen bg-white">
+      <div className="mx-auto max-w-5xl px-6 py-14">
+        <header className="flex flex-col gap-3">
+          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
+            Client Updates
+          </h1>
+          <p className="max-w-2xl text-lg text-slate-700">
+            Log in to view your project status, due dates, and notes.
           </p>
-        )}
+        </header>
+
+        <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-8 shadow-sm">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <div className="text-sm font-semibold text-slate-900">What you’ll see</div>
+              <p className="mt-2 text-slate-700">
+                A clean status dashboard with your project summary and a checklist of tasks, dates,
+                and progress—always up to date.
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">Project summary</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Name, next due date, last update
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">Task table</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Status pills and completion dates
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">Notes</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Clear, client-safe updates
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">Links</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Deliverables, docs, next steps
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <div className="text-sm font-semibold text-slate-900">Client login</div>
+              <p className="mt-2 text-sm text-slate-700">
+                Use your email to receive a secure magic link.
+              </p>
+
+              <Link
+                href="/login"
+                className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+              >
+                Go to Login
+              </Link>
+
+              <div className="mt-4 text-xs text-slate-500">
+                If you don’t receive an email within a minute, check spam the first time.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer className="mt-10 text-xs text-slate-500">
+          © {new Date().getFullYear()} Client Updates Portal
+        </footer>
       </div>
     </main>
   );
