@@ -9,17 +9,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/status` },
-    });
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: `${window.location.origin}/status` },
+  });
 
-    setSent(true);
+  console.log("OTP result:", { data, error });
+
+  if (error) {
+    alert(error.message);
     setLoading(false);
+    return;
   }
+
+  setSent(true);
+  setLoading(false);
+}
+
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-white px-6">
