@@ -14,7 +14,9 @@ export default function LoginPage() {
 
     await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/status` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/status`,
+      },
     });
 
     setSent(true);
