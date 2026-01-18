@@ -16,6 +16,19 @@ type StatusResponse =
   | { ok: true; client_name: string; last_updated: string; rows: PortalRow[] }
   | { ok: false; reason?: string; error?: string };
 
+type NotesResponse =
+  | { ok: true; updatedRange?: string }
+  | { ok: false; reason?: string; error?: string };
+
+function statusPillClass(status: string) {
+  const s = (status || "").toLowerCase();
+  if (s.includes("complete")) return "pill pill-complete";
+  if (s.includes("progress")) return "pill pill-progress";
+  if (s.includes("not")) return "pill pill-notstarted";
+  // fallback
+  return "pill border border-slate-200 bg-slate-50 text-slate-800";
+}
+
 export default function StatusPage() {
   const router = useRouter();
 
@@ -28,28 +41,20 @@ export default function StatusPage() {
 
   const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
   const [sendingRow, setSendingRow] = useState<number | null>(null);
-  const [cooldownRow, setCooldownRow] = useState<number | null>(null);
-
+  const [recentlySentRow, setRecentlySentRow] = useState<number | null>(null);
   const [toast, setToast] = useState<string>("");
-  const toastTimerRef = useRef<number | null>(null);
 
-  function showToast(message: string) {
-    setToast(message);
+  const toastTimer = useRef<number | null>(null);
 
-    if (toastTimerRef.current) {
-      window.clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
-    }
-
-    toastTimerRef.current = window.setTimeout(() => {
-      setToast("");
-      toastTimerRef.current = null;
-    }, 4500);
+  function showToast(msg: string) {
+    setToast(msg);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(""), 4500);
   }
 
   useEffect(() => {
     return () => {
-      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
     };
   }, []);
 
@@ -76,10 +81,14 @@ export default function StatusPage() {
 
   async function fetchStatus() {
     setLoadingData(true);
-    setToast("");
 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
 
     const res = await fetch("/api/status", {
       headers: { Authorization: `Bearer ${token}` },
@@ -114,7 +123,7 @@ export default function StatusPage() {
     router.replace("/login");
   }
 
-  const safeTitle = useMemo(() => clientName || "Client Portal", [clientName]);
+  const safeTitle = useMemo(() => clientName || "Project Status", [clientName]);
 
   async function submitNote(rowIndex: number) {
     const row = rows[rowIndex];
@@ -150,76 +159,90 @@ export default function StatusPage() {
       }),
     });
 
-    const json = await res.json().catch(() => ({} as any));
+    const json = (await res.json().catch(() => ({}))) as NotesResponse;
 
-    if (!res.ok) {
-      showToast(
-        `Couldn’t send note (HTTP ${res.status}): ${json?.error || json?.reason || "Unknown error"}`
-      );
+    if (!res.ok || !("ok" in json) || json.ok === false) {
+      const reason = (json as any)?.error || (json as any)?.reason || `HTTP ${res.status}`;
+      showToast(`Couldn’t send note: ${reason}`);
       setSendingRow(null);
       return;
     }
 
-    // Clear the draft
     setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
+    showToast(`Note sent${json.updatedRange ? ` (logged)` : ""}.`);
 
-    // UX: disable button briefly after success (prevents spam/double-click)
+    // Disable the Send button briefly after success (quick win)
+    setRecentlySentRow(rowIndex);
+    window.setTimeout(() => setRecentlySentRow(null), 1500);
+
     setSendingRow(null);
-    setCooldownRow(rowIndex);
-
-    showToast(`Note sent.`);
-
-    window.setTimeout(() => {
-      setCooldownRow((current) => (current === rowIndex ? null : current));
-    }, 1500);
   }
 
   if (checking) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-white px-6">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
-          Checking access…
+      <main className="min-h-[calc(100vh-65px)]">
+        <div className="app-shell">
+          <div className="card mx-auto max-w-lg p-6 text-slate-700">Checking access…</div>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="flex items-start justify-between gap-4">
+    <main className="min-h-[calc(100vh-65px)]">
+      <div className="app-shell">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">{safeTitle}</h1>
-            <div className="mt-2 text-sm text-slate-600">
+            <h1 className="text-6xl font-extrabold tracking-tight text-slate-900">
+              {safeTitle}
+            </h1>
+            <div className="mt-3 text-sm text-slate-600">
               Last updated{" "}
               <span className="font-semibold text-slate-900">{lastUpdated || "—"}</span>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={fetchStatus}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
-            >
+            <button onClick={fetchStatus} className="btn-secondary">
               Refresh
             </button>
-            <button
-              onClick={handleLogout}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-            >
+            <button onClick={handleLogout} className="btn-primary">
               Log out
             </button>
           </div>
         </div>
 
-        {toast ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            {toast}
-          </div>
-        ) : null}
+        {/* Toast */}
+        {toast ? <div className="toast mt-6 text-slate-700">{toast}</div> : null}
 
-        <div className="mt-8 rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+        {/* Summary strip (matches reference top bar vibe) */}
+        <div className="card mt-8 p-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <div className="text-xs font-semibold text-slate-500">Client</div>
+              <div className="mt-1 text-base font-semibold text-slate-900">{clientName || "—"}</div>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold text-slate-500">Total items</div>
+              <div className="mt-1 text-base font-semibold text-slate-900">
+                {loadingData ? "…" : rows.length}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold text-slate-500">Notes</div>
+              <div className="mt-1 text-base font-semibold text-slate-900">
+                Reply per row at the far right
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="card-solid mt-8 overflow-hidden">
+          <div className="border-b border-slate-200 bg-white/60 px-6 py-4">
             <div className="text-sm font-semibold text-slate-900">Projects & Tasks</div>
             <div className="mt-1 text-sm text-slate-600">
               {loadingData ? "Loading…" : `${rows.length} items`}
@@ -227,61 +250,58 @@ export default function StatusPage() {
           </div>
 
           <div className="overflow-auto">
-            <table className="min-w-[980px] w-full text-sm">
-              <thead className="bg-white">
-                <tr className="border-b border-slate-200 text-left text-slate-600">
-                  <th className="px-6 py-3 font-semibold">Project</th>
-                  <th className="px-6 py-3 font-semibold">Task</th>
-                  <th className="px-6 py-3 font-semibold">Status</th>
-                  <th className="px-6 py-3 font-semibold">Est. Complete</th>
-                  <th className="px-6 py-3 font-semibold">Actual Complete</th>
-                  <th className="px-6 py-3 font-semibold">Notes to send</th>
+            <table className="min-w-[1060px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-white text-left text-slate-600">
+                  <th className="px-6 py-4 font-semibold">Project</th>
+                  <th className="px-6 py-4 font-semibold">Task</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold">Estimated Completion</th>
+                  <th className="px-6 py-4 font-semibold">Actual Completion</th>
+                  <th className="px-6 py-4 font-semibold">Notes</th>
                 </tr>
               </thead>
 
               <tbody>
                 {loadingData ? (
                   <tr>
-                    <td className="px-6 py-6 text-slate-600" colSpan={6}>
+                    <td className="px-6 py-10 text-slate-600" colSpan={6}>
                       Loading…
                     </td>
                   </tr>
                 ) : rows.length ? (
                   rows.map((r, i) => {
-                    const isSending = sendingRow === i;
-                    const isCooldown = cooldownRow === i;
-                    const disabled = isSending || isCooldown;
-
+                    const disabled = sendingRow === i || recentlySentRow === i;
                     return (
-                      <tr key={i} className="border-t border-slate-200 align-top">
-                        <td className="px-6 py-4 font-semibold text-slate-900">{r.project || "—"}</td>
-                        <td className="px-6 py-4 text-slate-800">{r.task || "—"}</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800">
-                            {r.status || "—"}
-                          </span>
+                      <tr key={i} className="border-t border-slate-200 bg-white">
+                        <td className="px-6 py-5 font-semibold text-slate-900">{r.project || "—"}</td>
+                        <td className="px-6 py-5 text-slate-800">{r.task || "—"}</td>
+                        <td className="px-6 py-5">
+                          <span className={statusPillClass(r.status)}>{r.status || "—"}</span>
                         </td>
-                        <td className="px-6 py-4 text-slate-800">{r.estimated_completion || "—"}</td>
-                        <td className="px-6 py-4 text-slate-800">{r.actual_completion || "—"}</td>
+                        <td className="px-6 py-5 text-slate-800">{r.estimated_completion || "—"}</td>
+                        <td className="px-6 py-5 text-slate-800">{r.actual_completion || "—"}</td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-5">
                           <div className="flex gap-2">
                             <textarea
                               value={notesDraft[i] || ""}
-                              onChange={(e) =>
-                                setNotesDraft((p) => ({ ...p, [i]: e.target.value }))
-                              }
+                              onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
                               placeholder="Type notes for this item…"
                               rows={2}
-                              className="w-full min-w-[320px] resize-y rounded-xl border border-slate-300 px-3 py-2 text-slate-900"
+                              className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-blue-400/60 focus:ring-4 focus:ring-blue-500/10"
                             />
                             <button
                               onClick={() => submitNote(i)}
                               disabled={disabled}
-                              className="h-fit rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                              className="btn-primary h-[42px] self-start px-4 text-xs"
+                              title={recentlySentRow === i ? "Sent" : "Send"}
                             >
-                              {isSending ? "Sending…" : isCooldown ? "Sent" : "Send"}
+                              {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send"}
                             </button>
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500">
+                            Notes are sent to your private sheet log.
                           </div>
                         </td>
                       </tr>
@@ -289,7 +309,7 @@ export default function StatusPage() {
                   })
                 ) : (
                   <tr>
-                    <td className="px-6 py-6 text-slate-600" colSpan={6}>
+                    <td className="px-6 py-10 text-slate-600" colSpan={6}>
                       No items found.
                     </td>
                   </tr>
@@ -300,7 +320,7 @@ export default function StatusPage() {
         </div>
 
         <div className="mt-6 text-xs text-slate-500">
-          Notes are delivered to a private log for your team to review and respond.
+          Need to update something? Send a note on the relevant row.
         </div>
       </div>
     </main>

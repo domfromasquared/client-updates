@@ -1,26 +1,125 @@
-@import "tailwindcss";
+@reference "tailwindcss";
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- App theme tokens (muted, clean, soft blue-gray) --- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: 248 250 252;           /* slate-50 */
+  --panel: 255 255 255;        /* white */
+  --panel-tint: 245 248 255;   /* subtle blue tint */
+  --border: 226 232 240;       /* slate-200 */
+  --text: 15 23 42;            /* slate-900 */
+  --muted: 71 85 105;          /* slate-600 */
+
+  /* Muted “social palette” accents */
+  --accent-blue: 59 130 246;   /* blue-500 (soft usage) */
+  --accent-red: 239 68 68;     /* red-500 */
+  --accent-purple: 168 85 247; /* purple-500 */
+  --accent-teal: 20 184 166;   /* teal-500 */
+
+  /* Status pill colors (muted) */
+  --status-green-bg: 220 252 231;  /* green-100 */
+  --status-green: 22 101 52;       /* green-800 */
+
+  --status-blue-bg: 219 234 254;   /* blue-100 */
+  --status-blue: 30 64 175;        /* blue-800 */
+
+  --status-amber-bg: 254 243 199;  /* amber-100 */
+  --status-amber: 146 64 14;       /* amber-800 */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(var(--text));
+  background:
+    radial-gradient(1000px 500px at 20% 0%, rgba(59, 130, 246, 0.10), transparent 55%),
+    radial-gradient(900px 450px at 80% 10%, rgba(168, 85, 247, 0.08), transparent 50%),
+    radial-gradient(900px 450px at 50% 100%, rgba(20, 184, 166, 0.06), transparent 55%),
+    rgb(var(--bg));
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Reusable UI helpers --- */
+@layer components {
+  .app-shell {
+    @apply mx-auto w-full max-w-6xl px-6 py-10;
+  }
+
+  .card {
+    @apply rounded-2xl border shadow-sm;
+    border-color: rgb(var(--border));
+    background: linear-gradient(180deg, rgba(245, 248, 255, 0.85), rgba(255, 255, 255, 0.95));
+  }
+
+  .card-solid {
+    @apply rounded-2xl border bg-white shadow-sm;
+    border-color: rgb(var(--border));
+  }
+
+  .muted {
+    color: rgb(var(--muted));
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn text-white;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.90));
+  }
+
+  .btn-secondary {
+    @apply btn border bg-white text-slate-900;
+    border-color: rgb(var(--border));
+  }
+
+  .input {
+    @apply w-full rounded-xl border bg-white px-4 py-3 text-slate-900 outline-none transition;
+    border-color: rgb(var(--border));
+  }
+
+  .input:focus {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.55);
+  }
+
+  .toast {
+    @apply rounded-2xl border p-4 text-sm;
+    border-color: rgb(var(--border));
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(8px);
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .pill-complete {
+    background: rgb(var(--status-green-bg));
+    color: rgb(var(--status-green));
+    border: 1px solid rgba(22, 101, 52, 0.15);
+  }
+
+  .pill-progress {
+    background: rgb(var(--status-blue-bg));
+    color: rgb(var(--status-blue));
+    border: 1px solid rgba(30, 64, 175, 0.15);
+  }
+
+  .pill-notstarted {
+    background: rgb(var(--status-amber-bg));
+    color: rgb(var(--status-amber));
+    border: 1px solid rgba(146, 64, 14, 0.15);
+  }
 }
