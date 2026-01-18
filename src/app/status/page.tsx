@@ -301,7 +301,7 @@ export default function StatusPage() {
                             </button>
                           </div>
                           <div className="mt-2 text-xs text-slate-500">
-                            Notes are sent to your private sheet log.
+                            Notes are sent to our secure private log.
                           </div>
                         </td>
                       </tr>
