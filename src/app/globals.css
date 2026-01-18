@@ -1,33 +1,29 @@
-@reference "tailwindcss";
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* --- App theme tokens (muted, clean, soft blue-gray) --- */
 :root {
-  --bg: 248 250 252;           /* slate-50 */
-  --panel: 255 255 255;        /* white */
-  --panel-tint: 245 248 255;   /* subtle blue tint */
-  --border: 226 232 240;       /* slate-200 */
-  --text: 15 23 42;            /* slate-900 */
-  --muted: 71 85 105;          /* slate-600 */
+  --bg: 248 250 252; /* slate-50 */
+  --panel: 255 255 255; /* white */
+  --panel-tint: 245 248 255; /* subtle blue tint */
+  --border: 226 232 240; /* slate-200 */
+  --text: 15 23 42; /* slate-900 */
+  --muted: 71 85 105; /* slate-600 */
 
-  /* Muted “social palette” accents */
-  --accent-blue: 59 130 246;   /* blue-500 (soft usage) */
-  --accent-red: 239 68 68;     /* red-500 */
+  /* Muted “social palette” accents (from your ref image) */
+  --accent-blue: 59 130 246; /* blue-500 */
+  --accent-red: 239 68 68; /* red-500 */
   --accent-purple: 168 85 247; /* purple-500 */
-  --accent-teal: 20 184 166;   /* teal-500 */
+  --accent-teal: 20 184 166; /* teal-500 */
 
   /* Status pill colors (muted) */
-  --status-green-bg: 220 252 231;  /* green-100 */
-  --status-green: 22 101 52;       /* green-800 */
+  --status-green-bg: 220 252 231; /* green-100 */
+  --status-green: 22 101 52; /* green-800 */
 
-  --status-blue-bg: 219 234 254;   /* blue-100 */
-  --status-blue: 30 64 175;        /* blue-800 */
+  --status-blue-bg: 219 234 254; /* blue-100 */
+  --status-blue: 30 64 175; /* blue-800 */
 
-  --status-amber-bg: 254 243 199;  /* amber-100 */
-  --status-amber: 146 64 14;       /* amber-800 */
+  --status-amber-bg: 254 243 199; /* amber-100 */
+  --status-amber: 146 64 14; /* amber-800 */
 }
 
 html,
@@ -38,9 +34,9 @@ body {
 body {
   color: rgb(var(--text));
   background:
-    radial-gradient(1000px 500px at 20% 0%, rgba(59, 130, 246, 0.10), transparent 55%),
-    radial-gradient(900px 450px at 80% 10%, rgba(168, 85, 247, 0.08), transparent 50%),
-    radial-gradient(900px 450px at 50% 100%, rgba(20, 184, 166, 0.06), transparent 55%),
+    radial-gradient(1000px 520px at 18% 0%, rgba(59, 130, 246, 0.10), transparent 55%),
+    radial-gradient(900px 460px at 82% 8%, rgba(168, 85, 247, 0.09), transparent 52%),
+    radial-gradient(900px 460px at 50% 100%, rgba(20, 184, 166, 0.07), transparent 55%),
     rgb(var(--bg));
 }
 
@@ -49,16 +45,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tailwind v4 utilities (this makes `@apply btn` valid and fixes your build error) */
+@utility btn {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition
+         disabled:opacity-50 disabled:cursor-not-allowed
+         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30;
+}
+
 /* --- Reusable UI helpers --- */
 @layer components {
   .app-shell {
-    @apply mx-auto w-full max-w-6xl px-6 py-10;
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 py-10;
   }
 
   .card {
     @apply rounded-2xl border shadow-sm;
     border-color: rgb(var(--border));
-    background: linear-gradient(180deg, rgba(245, 248, 255, 0.85), rgba(255, 255, 255, 0.95));
+    background: linear-gradient(180deg, rgba(245, 248, 255, 0.86), rgba(255, 255, 255, 0.96));
   }
 
   .card-solid {
@@ -70,8 +73,9 @@ body {
     color: rgb(var(--muted));
   }
 
+  /* Keep these class names (used throughout pages) */
   .btn {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn;
   }
 
   .btn-primary {
@@ -97,8 +101,8 @@ body {
   .toast {
     @apply rounded-2xl border p-4 text-sm;
     border-color: rgb(var(--border));
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(10px);
   }
 
   .pill {

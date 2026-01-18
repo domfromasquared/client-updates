@@ -33,7 +33,7 @@ export default function LoginPage() {
     <main className="min-h-[calc(100vh-65px)]">
       <div className="app-shell">
         <div className="card mx-auto max-w-lg p-8 sm:p-10">
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
             Client Login
           </h1>
           <p className="mt-2 text-sm text-slate-600">

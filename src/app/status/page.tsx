@@ -194,7 +194,7 @@ export default function StatusPage() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-6xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900">
               {safeTitle}
             </h1>
             <div className="mt-3 text-sm text-slate-600">
@@ -216,7 +216,7 @@ export default function StatusPage() {
         {/* Toast */}
         {toast ? <div className="toast mt-6 text-slate-700">{toast}</div> : null}
 
-        {/* Summary strip (matches reference top bar vibe) */}
+        {/* Summary strip */}
         <div className="card mt-8 p-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>

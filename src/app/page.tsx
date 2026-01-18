@@ -4,11 +4,11 @@ export default function HomePage() {
   return (
     <main className="min-h-[calc(100vh-65px)]">
       <div className="app-shell">
-        <div className="card p-10">
-          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
+        <div className="card p-8 sm:p-10">
+          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900">
             Project Status
           </h1>
-          <p className="mt-3 max-w-xl text-base text-slate-600">
+          <p className="mt-3 max-w-2xl text-base text-slate-600">
             Log in to view your active projects, timelines, and send notes back to the team.
           </p>
 
@@ -35,6 +35,10 @@ export default function HomePage() {
               <div className="mt-1 text-sm text-slate-600">Auth + locked API routes.</div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 text-xs text-slate-500">
+          If you have trouble logging in, confirm you’re using the email address on file.
         </div>
       </div>
     </main>

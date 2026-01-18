@@ -10,9 +10,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {/* Subtle top bar to keep everything feeling “one system” */}
-        <div className="w-full border-b border-slate-200/70 bg-white/60 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        {/* Top bar: consistent “client-facing portal” framing */}
+        <div className="w-full border-b border-slate-200/70 bg-white/70 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl border border-slate-200 bg-white shadow-sm" />
               <div>
