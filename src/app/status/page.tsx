@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
@@ -16,10 +16,6 @@ type StatusResponse =
   | { ok: true; client_name: string; last_updated: string; rows: PortalRow[] }
   | { ok: false; reason?: string; error?: string };
 
-type NotesResponse =
-  | { ok: true; updatedRange?: string; sheet?: string }
-  | { ok: false; reason?: string; error?: string };
-
 export default function StatusPage() {
   const router = useRouter();
 
@@ -32,9 +28,31 @@ export default function StatusPage() {
 
   const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
   const [sendingRow, setSendingRow] = useState<number | null>(null);
-  const [toast, setToast] = useState<string>("");
+  const [cooldownRow, setCooldownRow] = useState<number | null>(null);
 
-  // --- Auth gate (prevents /status bounce) ---
+  const [toast, setToast] = useState<string>("");
+  const toastTimerRef = useRef<number | null>(null);
+
+  function showToast(message: string) {
+    setToast(message);
+
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast("");
+      toastTimerRef.current = null;
+    }, 4500);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -47,7 +65,6 @@ export default function StatusPage() {
         }
         await new Promise((r) => setTimeout(r, 250));
       }
-
       if (!cancelled) router.replace("/login");
     }
 
@@ -57,20 +74,12 @@ export default function StatusPage() {
     };
   }, [router]);
 
-  // --- Load client portal data ---
   async function fetchStatus() {
     setLoadingData(true);
     setToast("");
 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-
-    if (!token) {
-      setToast("Session missing. Please log in again.");
-      setLoadingData(false);
-      router.replace("/login");
-      return;
-    }
 
     const res = await fetch("/api/status", {
       headers: { Authorization: `Bearer ${token}` },
@@ -84,7 +93,7 @@ export default function StatusPage() {
         router.replace("/login");
         return;
       }
-      setToast(`Couldn’t load status: ${reason}`);
+      showToast(`Couldn’t load status: ${reason}`);
       setLoadingData(false);
       return;
     }
@@ -107,65 +116,62 @@ export default function StatusPage() {
 
   const safeTitle = useMemo(() => clientName || "Client Portal", [clientName]);
 
-  // --- Send a note to /api/notes ---
   async function submitNote(rowIndex: number) {
     const row = rows[rowIndex];
     const note = (notesDraft[rowIndex] || "").trim();
 
     if (!note) {
-      setToast("Add a note before sending.");
+      showToast("Add a note before sending.");
       return;
     }
 
     setSendingRow(rowIndex);
-    setToast("");
 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
 
     if (!token) {
-      setToast("Session missing. Please log in again.");
+      showToast("Session missing. Please log in again.");
       setSendingRow(null);
       return;
     }
 
-    let res: Response;
-    try {
-      res = await fetch("/api/notes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          client_name: clientName,
-          project: row.project,
-          task: row.task,
-          note,
-        }),
-      });
-    } catch (e: any) {
-      setToast(`Couldn’t send note: ${e?.message || "Network error"}`);
-      setSendingRow(null);
-      return;
-    }
+    const res = await fetch("/api/notes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        client_name: clientName,
+        project: row.project,
+        task: row.task,
+        note,
+      }),
+    });
 
-    const json = (await res.json().catch(() => ({}))) as NotesResponse;
+    const json = await res.json().catch(() => ({} as any));
 
-    // Debug visibility in the browser console
-    console.log("NOTES API response:", res.status, json);
-
-    if (!res.ok || !("ok" in json) || json.ok === false) {
-      setToast(
+    if (!res.ok) {
+      showToast(
         `Couldn’t send note (HTTP ${res.status}): ${json?.error || json?.reason || "Unknown error"}`
       );
       setSendingRow(null);
       return;
     }
 
+    // Clear the draft
     setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
-    setToast(`Note sent. Logged to ${json?.updatedRange || json?.sheet || "client_notes"}`);
+
+    // UX: disable button briefly after success (prevents spam/double-click)
     setSendingRow(null);
+    setCooldownRow(rowIndex);
+
+    showToast(`Note sent.`);
+
+    window.setTimeout(() => {
+      setCooldownRow((current) => (current === rowIndex ? null : current));
+    }, 1500);
   }
 
   if (checking) {
@@ -185,7 +191,8 @@ export default function StatusPage() {
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">{safeTitle}</h1>
             <div className="mt-2 text-sm text-slate-600">
-              Last updated <span className="font-semibold text-slate-900">{lastUpdated || "—"}</span>
+              Last updated{" "}
+              <span className="font-semibold text-slate-900">{lastUpdated || "—"}</span>
             </div>
           </div>
 
@@ -240,36 +247,46 @@ export default function StatusPage() {
                     </td>
                   </tr>
                 ) : rows.length ? (
-                  rows.map((r, i) => (
-                    <tr key={i} className="border-t border-slate-200">
-                      <td className="px-6 py-4 font-semibold text-slate-900">{r.project || "—"}</td>
-                      <td className="px-6 py-4 text-slate-800">{r.task || "—"}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800">
-                          {r.status || "—"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-800">{r.estimated_completion || "—"}</td>
-                      <td className="px-6 py-4 text-slate-800">{r.actual_completion || "—"}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <input
-                            value={notesDraft[i] || ""}
-                            onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
-                            placeholder="Type notes for this item…"
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900"
-                          />
-                          <button
-                            onClick={() => submitNote(i)}
-                            disabled={sendingRow === i}
-                            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                          >
-                            {sendingRow === i ? "Sending…" : "Send"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  rows.map((r, i) => {
+                    const isSending = sendingRow === i;
+                    const isCooldown = cooldownRow === i;
+                    const disabled = isSending || isCooldown;
+
+                    return (
+                      <tr key={i} className="border-t border-slate-200 align-top">
+                        <td className="px-6 py-4 font-semibold text-slate-900">{r.project || "—"}</td>
+                        <td className="px-6 py-4 text-slate-800">{r.task || "—"}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800">
+                            {r.status || "—"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-800">{r.estimated_completion || "—"}</td>
+                        <td className="px-6 py-4 text-slate-800">{r.actual_completion || "—"}</td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <textarea
+                              value={notesDraft[i] || ""}
+                              onChange={(e) =>
+                                setNotesDraft((p) => ({ ...p, [i]: e.target.value }))
+                              }
+                              placeholder="Type notes for this item…"
+                              rows={2}
+                              className="w-full min-w-[320px] resize-y rounded-xl border border-slate-300 px-3 py-2 text-slate-900"
+                            />
+                            <button
+                              onClick={() => submitNote(i)}
+                              disabled={disabled}
+                              className="h-fit rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {isSending ? "Sending…" : isCooldown ? "Sent" : "Send"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td className="px-6 py-6 text-slate-600" colSpan={6}>
