@@ -1,69 +1,171 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
+type PortalRow = {
+  project: string;
+  task: string;
+  status: string;
+  estimated_completion: string;
+  actual_completion: string;
+};
+
+type StatusResponse =
+  | { ok: true; client_name: string; last_updated: string; rows: PortalRow[] }
+  | { ok: false; reason?: string; error?: string };
+
+type NotesResponse =
+  | { ok: true; updatedRange?: string; sheet?: string }
+  | { ok: false; reason?: string; error?: string };
+
 export default function StatusPage() {
   const router = useRouter();
+
   const [checking, setChecking] = useState(true);
-  const [email, setEmail] = useState<string | null>(null);
-  const [apiResult, setApiResult] = useState<string>("");
+  const [loadingData, setLoadingData] = useState(true);
 
+  const [clientName, setClientName] = useState("");
+  const [lastUpdated, setLastUpdated] = useState("");
+  const [rows, setRows] = useState<PortalRow[]>([]);
+
+  const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
+  const [sendingRow, setSendingRow] = useState<number | null>(null);
+  const [toast, setToast] = useState<string>("");
+
+  // --- Auth gate (prevents /status bounce) ---
   useEffect(() => {
-  let cancelled = false;
+    let cancelled = false;
 
-  async function checkSessionWithRetry() {
-    for (let i = 0; i < 12; i++) {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-
-      if (session) {
-        if (!cancelled) {
-          setEmail(session.user.email ?? null);
-          setChecking(false);
+    async function checkSessionWithRetry() {
+      for (let i = 0; i < 12; i++) {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          if (!cancelled) setChecking(false);
+          return;
         }
-        return;
+        await new Promise((r) => setTimeout(r, 250));
       }
 
-      // wait 250ms and try again (total ~3 seconds)
-      await new Promise((r) => setTimeout(r, 250));
+      if (!cancelled) router.replace("/login");
     }
 
-    if (!cancelled) router.replace("/login");
-  }
+    checkSessionWithRetry();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
-  checkSessionWithRetry();
+  // --- Load client portal data ---
+  async function fetchStatus() {
+    setLoadingData(true);
+    setToast("");
 
-  return () => {
-    cancelled = true;
-  };
-}, [router]);
-
-
-  async function callApiWithoutToken() {
-    setApiResult("Calling /api/status without token…");
-    const res = await fetch("/api/status");
-    const json = await res.json().catch(() => ({}));
-    setApiResult(`HTTP ${res.status}: ${JSON.stringify(json)}`);
-  }
-
-  async function callApiWithToken() {
-    setApiResult("Calling /api/status with token…");
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
+
+    if (!token) {
+      setToast("Session missing. Please log in again.");
+      setLoadingData(false);
+      router.replace("/login");
+      return;
+    }
 
     const res = await fetch("/api/status", {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const json = await res.json().catch(() => ({}));
-    setApiResult(`HTTP ${res.status}: ${JSON.stringify(json)}`);
+    const json = (await res.json().catch(() => ({}))) as StatusResponse;
+
+    if (!res.ok || !("ok" in json) || json.ok === false) {
+      const reason = (json as any)?.reason || (json as any)?.error || `HTTP ${res.status}`;
+      if (reason === "not_allowed") {
+        router.replace("/login");
+        return;
+      }
+      setToast(`Couldn’t load status: ${reason}`);
+      setLoadingData(false);
+      return;
+    }
+
+    setClientName(json.client_name);
+    setLastUpdated(json.last_updated);
+    setRows(json.rows);
+    setLoadingData(false);
   }
+
+  useEffect(() => {
+    if (!checking) fetchStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/login");
+  }
+
+  const safeTitle = useMemo(() => clientName || "Client Portal", [clientName]);
+
+  // --- Send a note to /api/notes ---
+  async function submitNote(rowIndex: number) {
+    const row = rows[rowIndex];
+    const note = (notesDraft[rowIndex] || "").trim();
+
+    if (!note) {
+      setToast("Add a note before sending.");
+      return;
+    }
+
+    setSendingRow(rowIndex);
+    setToast("");
+
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+
+    if (!token) {
+      setToast("Session missing. Please log in again.");
+      setSendingRow(null);
+      return;
+    }
+
+    let res: Response;
+    try {
+      res = await fetch("/api/notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          client_name: clientName,
+          project: row.project,
+          task: row.task,
+          note,
+        }),
+      });
+    } catch (e: any) {
+      setToast(`Couldn’t send note: ${e?.message || "Network error"}`);
+      setSendingRow(null);
+      return;
+    }
+
+    const json = (await res.json().catch(() => ({}))) as NotesResponse;
+
+    // Debug visibility in the browser console
+    console.log("NOTES API response:", res.status, json);
+
+    if (!res.ok || !("ok" in json) || json.ok === false) {
+      setToast(
+        `Couldn’t send note (HTTP ${res.status}): ${json?.error || json?.reason || "Unknown error"}`
+      );
+      setSendingRow(null);
+      return;
+    }
+
+    setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
+    setToast(`Note sent. Logged to ${json?.updatedRange || json?.sheet || "client_notes"}`);
+    setSendingRow(null);
   }
 
   if (checking) {
@@ -78,43 +180,110 @@ export default function StatusPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-3xl font-extrabold text-slate-900">Status (Test Mode)</h1>
-          <button
-            onClick={handleLogout}
-            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
-          >
-            Log out
-          </button>
-        </div>
-
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
-          Logged in as <span className="font-semibold text-slate-900">{email}</span>
-        </div>
-
-        <div className="mt-8 rounded-2xl border border-slate-200 p-6">
-          <div className="text-sm font-semibold text-slate-900">API Lock Test</div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              onClick={callApiWithoutToken}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
-            >
-              Call without token (expect 401)
-            </button>
-            <button
-              onClick={callApiWithToken}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Call with token (expect 200)
-            </button>
+          <div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">{safeTitle}</h1>
+            <div className="mt-2 text-sm text-slate-600">
+              Last updated <span className="font-semibold text-slate-900">{lastUpdated || "—"}</span>
+            </div>
           </div>
 
-          {apiResult ? (
-            <pre className="mt-4 overflow-auto rounded-xl bg-slate-50 p-4 text-xs text-slate-800">
-{apiResult}
-            </pre>
-          ) : null}
+          <div className="flex gap-2">
+            <button
+              onClick={fetchStatus}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Log out
+            </button>
+          </div>
+        </div>
+
+        {toast ? (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            {toast}
+          </div>
+        ) : null}
+
+        <div className="mt-8 rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+            <div className="text-sm font-semibold text-slate-900">Projects & Tasks</div>
+            <div className="mt-1 text-sm text-slate-600">
+              {loadingData ? "Loading…" : `${rows.length} items`}
+            </div>
+          </div>
+
+          <div className="overflow-auto">
+            <table className="min-w-[980px] w-full text-sm">
+              <thead className="bg-white">
+                <tr className="border-b border-slate-200 text-left text-slate-600">
+                  <th className="px-6 py-3 font-semibold">Project</th>
+                  <th className="px-6 py-3 font-semibold">Task</th>
+                  <th className="px-6 py-3 font-semibold">Status</th>
+                  <th className="px-6 py-3 font-semibold">Est. Complete</th>
+                  <th className="px-6 py-3 font-semibold">Actual Complete</th>
+                  <th className="px-6 py-3 font-semibold">Notes to send</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loadingData ? (
+                  <tr>
+                    <td className="px-6 py-6 text-slate-600" colSpan={6}>
+                      Loading…
+                    </td>
+                  </tr>
+                ) : rows.length ? (
+                  rows.map((r, i) => (
+                    <tr key={i} className="border-t border-slate-200">
+                      <td className="px-6 py-4 font-semibold text-slate-900">{r.project || "—"}</td>
+                      <td className="px-6 py-4 text-slate-800">{r.task || "—"}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800">
+                          {r.status || "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-800">{r.estimated_completion || "—"}</td>
+                      <td className="px-6 py-4 text-slate-800">{r.actual_completion || "—"}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <input
+                            value={notesDraft[i] || ""}
+                            onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
+                            placeholder="Type notes for this item…"
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900"
+                          />
+                          <button
+                            onClick={() => submitNote(i)}
+                            disabled={sendingRow === i}
+                            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            {sendingRow === i ? "Sending…" : "Send"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="px-6 py-6 text-slate-600" colSpan={6}>
+                      No items found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-6 text-xs text-slate-500">
+          Notes are delivered to a private log for your team to review and respond.
         </div>
       </div>
     </main>
