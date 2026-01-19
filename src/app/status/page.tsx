@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { useIdleLogout } from "@/lib/useIdleLogout";
 
 type PortalRow = {
   project: string;
