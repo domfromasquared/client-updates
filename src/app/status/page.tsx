@@ -80,6 +80,9 @@ export default function StatusPage() {
     };
   }, [router]);
 
+    // Start idle logout only after we know auth is valid (prevents bounce)
+    useIdleLogout(!checking, { idleMs: 30 * 60 * 1000, redirectTo: "/login" });
+
   async function fetchStatus() {
     setLoadingData(true);
 
