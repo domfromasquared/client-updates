@@ -240,8 +240,70 @@ export default function StatusPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="card-solid mt-8 overflow-hidden">
+        {/* MOBILE VIEW (added) */}
+        <div className="mt-8 space-y-4 sm:hidden">
+          {loadingData ? (
+            <div className="card-solid p-6 text-slate-600">Loading…</div>
+          ) : rows.length ? (
+            rows.map((r, i) => {
+              const disabled = sendingRow === i || recentlySentRow === i;
+              return (
+                <div key={i} className="mobile-card">
+                  <div className="mobile-card-hd">
+                    <div className="min-w-0">
+                      <div className="text-sm font-extrabold text-slate-900 truncate">
+                        {r.project || "—"}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-700">{r.task || "—"}</div>
+                      <div className="mt-3">
+                        <span className={statusPillClass(r.status)}>{r.status || "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mobile-card-bd">
+                    <div className="kv">
+                      <div>
+                        <div className="kv-label">Estimated</div>
+                        <div className="kv-value">{r.estimated_completion || "—"}</div>
+                      </div>
+                      <div>
+                        <div className="kv-label">Actual</div>
+                        <div className="kv-value">{r.actual_completion || "—"}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="kv-label">Notes</div>
+                      <textarea
+                        value={notesDraft[i] || ""}
+                        onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
+                        placeholder="Type notes for this item…"
+                        rows={3}
+                        className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-blue-400/60 focus:ring-4 focus:ring-blue-500/10"
+                      />
+                      <button
+                        onClick={() => submitNote(i)}
+                        disabled={disabled}
+                        className="btn-primary mt-3 w-full py-3"
+                      >
+                        {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send note"}
+                      </button>
+                      <div className="mt-2 text-xs text-slate-500">
+                        Notes are sent to our secure private log.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="card-solid p-6 text-slate-600">No items found.</div>
+          )}
+        </div>
+
+        {/* Table (UNCHANGED, now desktop-only) */}
+        <div className="card-solid mt-8 overflow-hidden hidden sm:block">
           <div className="border-b border-slate-200 bg-white/60 px-6 py-4">
             <div className="text-sm font-semibold text-slate-900">Projects & Tasks</div>
             <div className="mt-1 text-sm text-slate-600">
@@ -283,23 +345,24 @@ export default function StatusPage() {
                         <td className="px-6 py-5 text-slate-800">{r.actual_completion || "—"}</td>
 
                         <td className="px-6 py-5">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-start">
                             <textarea
-                              value={notesDraft[i] || ""}
-                              onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
-                              placeholder="Type notes for this item…"
-                              rows={2}
-                              className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-blue-400/60 focus:ring-4 focus:ring-blue-500/10"
-                            />
-                            <button
-                              onClick={() => submitNote(i)}
-                              disabled={disabled}
-                              className="btn-primary h-[42px] self-start px-4 text-xs"
-                              title={recentlySentRow === i ? "Sent" : "Send"}
-                            >
-                              {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send"}
-                            </button>
-                          </div>
+                            value={notesDraft[i] || ""}
+                            onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
+                            placeholder="Type notes for this item…"
+                            rows={2}
+                            className="flex-1 min-w-[260px] resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-blue-400/60 focus:ring-4 focus:ring-blue-500/10"
+                          />
+                          <button
+                          onClick={() => submitNote(i)}
+                          disabled={disabled}
+                          className="btn-primary h-[42px] self-start px-4 text-xs shrink-0"
+                          title={recentlySentRow === i ? "Sent" : "Send"}
+                        >
+                          {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send"}
+                        </button>
+                      </div>
+
                           <div className="mt-2 text-xs text-slate-500">
                             Notes are sent to our secure private log.
                           </div>

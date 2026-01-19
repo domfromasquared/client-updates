@@ -126,4 +126,30 @@ body {
     color: rgb(var(--status-amber));
     border: 1px solid rgba(146, 64, 14, 0.15);
   }
+
+  /* --- Mobile-only helpers (added, no impact on desktop) --- */
+  .mobile-card {
+    @apply rounded-2xl border bg-white shadow-sm;
+    border-color: rgb(var(--border));
+  }
+
+  .mobile-card-hd {
+    @apply flex items-start justify-between gap-3 p-4;
+  }
+
+  .mobile-card-bd {
+    @apply px-4 pb-4 pt-0;
+  }
+
+  .kv {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .kv-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .kv-value {
+    @apply mt-1 text-sm font-semibold text-slate-900;
+  }
 }
