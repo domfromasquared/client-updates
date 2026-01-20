@@ -80,8 +80,8 @@ export default function StatusPage() {
     };
   }, [router]);
 
-    // Start idle logout only after we know auth is valid (prevents bounce)
-    useIdleLogout(!checking, { idleMs: 30 * 60 * 1000, redirectTo: "/login" });
+  // Start idle logout only after we know auth is valid (prevents bounce)
+  useIdleLogout(!checking, { idleMs: 30 * 60 * 1000, redirectTo: "/login" });
 
   async function fetchStatus() {
     setLoadingData(true);
@@ -244,7 +244,7 @@ export default function StatusPage() {
           </div>
         </div>
 
-        {/* MOBILE VIEW (added) */}
+        {/* MOBILE VIEW */}
         <div className="mt-8 space-y-4 sm:hidden">
           {loadingData ? (
             <div className="card-solid p-6 text-slate-600">Loading…</div>
@@ -306,7 +306,7 @@ export default function StatusPage() {
           )}
         </div>
 
-        {/* Table (UNCHANGED, now desktop-only) */}
+        {/* Table (desktop-only) */}
         <div className="card-solid mt-8 overflow-hidden hidden sm:block">
           <div className="border-b border-slate-200 bg-white/60 px-6 py-4">
             <div className="text-sm font-semibold text-slate-900">Projects & Tasks</div>
@@ -351,21 +351,21 @@ export default function StatusPage() {
                         <td className="px-6 py-5">
                           <div className="flex gap-2 items-start">
                             <textarea
-                            value={notesDraft[i] || ""}
-                            onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
-                            placeholder="Type notes for this item…"
-                            rows={2}
-                            className="flex-1 min-w-[260px] resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-blue-400/60 focus:ring-4 focus:ring-blue-500/10"
-                          />
-                          <button
-                          onClick={() => submitNote(i)}
-                          disabled={disabled}
-                          className="btn-primary h-[42px] self-start px-4 text-xs shrink-0"
-                          title={recentlySentRow === i ? "Sent" : "Send"}
-                        >
-                          {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send"}
-                        </button>
-                      </div>
+                              value={notesDraft[i] || ""}
+                              onChange={(e) => setNotesDraft((p) => ({ ...p, [i]: e.target.value }))}
+                              placeholder="Type notes for this item…"
+                              rows={2}
+                              className="flex-1 min-w-[260px] resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-blue-400/60 focus:ring-4 focus:ring-blue-500/10"
+                            />
+                            <button
+                              onClick={() => submitNote(i)}
+                              disabled={disabled}
+                              className="btn-primary h-[42px] self-start px-4 text-xs shrink-0"
+                              title={recentlySentRow === i ? "Sent" : "Send"}
+                            >
+                              {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send"}
+                            </button>
+                          </div>
 
                           <div className="mt-2 text-xs text-slate-500">
                             Notes are sent to our secure private log.
