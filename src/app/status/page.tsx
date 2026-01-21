@@ -32,7 +32,7 @@ function statusPillClass(status: string) {
   if (s.includes("complete")) return "pill pill-complete";
   if (s.includes("progress")) return "pill pill-progress";
   if (s.includes("not")) return "pill pill-notstarted";
-  // fallback
+  // fall back
   return "pill border border-slate-200 bg-slate-50 text-slate-800";
 }
 
