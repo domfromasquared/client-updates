@@ -6,6 +6,13 @@ function toISODateValue(v: string) {
   return (v || "").trim();
 }
 
+function cleanUrl(v: string) {
+  const s = (v || "").trim();
+  if (!s) return "";
+  if (!/^https?:\/\/.+/i.test(s)) return "";
+  return s;
+}
+
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization") || "";
   const match = auth.match(/^Bearer (.+)$/);
@@ -35,7 +42,7 @@ export async function GET(req: Request) {
 
   const updatesResp = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: "updates!A:K",
+    range: "updates!A:L",
   });
 
   const values = updatesResp.data.values as string[][] | undefined;
@@ -46,6 +53,7 @@ export async function GET(req: Request) {
       ok: true,
       client_name: "",
       last_updated: "",
+      project_files_url: "",
       rows: [],
     });
   }
@@ -61,6 +69,57 @@ export async function GET(req: Request) {
   // Only deny if the email NEVER appears in the sheet at all
   const emailExistsAnywhere = allRows.some(
     (r) => (r.email || "").toLowerCase() === email
+  );
+
+  if (!emailExistsAnywhere) {
+    return NextResponse.json(
+      { ok: false, reason: "not_allowed" },
+      { status: 403 }
+    );
+  }
+
+  // Client is valid but has zero active projects
+  if (!clientRows.length) {
+    return NextResponse.json({
+      ok: true,
+      client_name: "",
+      last_updated: "",
+      project_files_url: "",
+      rows: [],
+    });
+  }
+
+  const clientName = (clientRows[0].client_name || "").trim();
+
+  const lastUpdated =
+    [...clientRows]
+      .map((r) => (r.last_updated || "").trim())
+      .filter(Boolean)
+      .slice(-1)[0] || "";
+
+  const projectFilesUrl =
+    cleanUrl(
+      (clientRows.find((r) => (r.project_files_url || "").trim())
+        ?.project_files_url || ""
+      ).trim()
+    ) || "";
+
+  const rows = clientRows.map((r) => ({
+    project: (r.project || "").trim(),
+    task: (r.task || "").trim(),
+    status: (r.status || "").trim(),
+    estimated_completion: toISODateValue(r.estimated_completion || ""),
+    actual_completion: toISODateValue(r.actual_completion || ""),
+  }));
+
+  return NextResponse.json({
+    ok: true,
+    client_name: clientName,
+    last_updated: lastUpdated,
+    project_files_url: projectFilesUrl,
+    rows,
+  });
+}
   );
 
   if (!emailExistsAnywhere) {
