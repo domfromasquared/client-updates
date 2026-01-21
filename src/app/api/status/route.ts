@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     (r) => (r.email || "").toLowerCase() === email
   );
 
-  // 🚨 IMPORTANT FIX:
+  //  IMPORTANT FIX:
   // Only deny if the email NEVER appears in the sheet at all
   const emailExistsAnywhere = allRows.some(
     (r) => (r.email || "").toLowerCase() === email
