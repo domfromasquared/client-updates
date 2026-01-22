@@ -181,7 +181,11 @@ export default function StatusPage() {
     }
 
     setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
-    showToast(`Note sent${json.updatedRange ? ` (logged)` : ""}.`);
+
+    // ✅ ONLY CHANGE: add confirmation email reassurance
+    showToast(
+      `Note sent${json.updatedRange ? ` (logged)` : ""}. You’ll receive a confirmation email shortly.`
+    );
 
     setRecentlySentRow(rowIndex);
     window.setTimeout(() => setRecentlySentRow(null), 1500);
@@ -219,7 +223,7 @@ export default function StatusPage() {
                 href={projectFilesUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-lt"
+                className="btn-alt"
                 title="Open your project files in a new tab"
               >
                 View project files
@@ -227,7 +231,7 @@ export default function StatusPage() {
             ) : null}
 
             <button onClick={fetchStatus} className="btn-secondary">
-              Refresh
+              Refresh status
             </button>
             <button onClick={handleLogout} className="btn-primary">
               Log out
@@ -309,7 +313,7 @@ export default function StatusPage() {
                         {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send note"}
                       </button>
                       <div className="mt-2 text-xs text-slate-500">
-                        Notes are sent to our secure private log.
+                        Notes are securely delivered to our editing team.
                       </div>
                     </div>
                   </div>
@@ -317,7 +321,7 @@ export default function StatusPage() {
               );
             })
           ) : (
-            <div className="card-solid p-6 text-slate-600">No items found.</div>
+            <div className="card-solid p-6 text-slate-600">There are no active projects to display right now.</div>
           )}
         </div>
 
@@ -382,7 +386,7 @@ export default function StatusPage() {
                           </div>
 
                           <div className="mt-2 text-xs text-slate-500">
-                            Notes are sent to our secure private log.
+                            Notes are securely delivered to our editing team.
                           </div>
                         </td>
                       </tr>
@@ -391,7 +395,7 @@ export default function StatusPage() {
                 ) : (
                   <tr>
                     <td className="px-6 py-10 text-slate-600" colSpan={6}>
-                      No items found.
+                      There are no active projects to display right now.
                     </td>
                   </tr>
                 )}
@@ -401,7 +405,7 @@ export default function StatusPage() {
         </div>
 
         <div className="mt-6 text-xs text-slate-500">
-          Need to update something? Send a note on the relevant row.
+          Need to request a change or share feedback? Send a note on the relevant row.
         </div>
       </div>
     </main>

@@ -37,7 +37,7 @@ export default function LoginPage() {
             Client Login
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            We’ll email you a secure magic link to access your portal.
+            We’ll email you a secure link to access your project portal.
           </p>
 
           {toast ? <div className="toast mt-6 text-slate-700">{toast}</div> : null}
@@ -61,7 +61,7 @@ export default function LoginPage() {
               </button>
 
               <p className="text-xs text-slate-500">
-                Tip: check spam the first time, then mark as “Not spam.”
+                "If this is your first time logging in, please check your spam folder and mark the email as "Not spam.”
               </p>
             </form>
           ) : (
