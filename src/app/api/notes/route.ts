@@ -169,7 +169,7 @@ export async function POST(req: Request) {
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [[timestamp, userEmail, client_name, project, task, noteRaw]],
+      values: [[timestamp, client_name, project, task, noteRaw, userEmail]],
     },
   });
 
