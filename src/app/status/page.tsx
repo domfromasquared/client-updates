@@ -219,7 +219,7 @@ export default function StatusPage() {
                 href={projectFilesUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-secondary"
+                className="btn-lt"
                 title="Open your project files in a new tab"
               >
                 View project files
