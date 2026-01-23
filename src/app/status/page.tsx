@@ -1,7 +1,6 @@
-// src/app/status/page.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useIdleLogout } from "@/lib/useIdleLogout";
@@ -54,11 +53,11 @@ export default function StatusPage() {
 
   const toastTimer = useRef<number | null>(null);
 
-  function showToast(msg: string) {
+  const showToast = useCallback((msg: string) => {
     setToast(msg);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(""), 4500);
-  }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -90,7 +89,7 @@ export default function StatusPage() {
   // Start idle logout only after we know auth is valid (prevents bounce)
   useIdleLogout(!checking, { idleMs: 30 * 60 * 1000, redirectTo: "/login" });
 
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     setLoadingData(true);
 
     const { data } = await supabase.auth.getSession();
@@ -105,10 +104,16 @@ export default function StatusPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const json = (await res.json().catch(() => ({}))) as StatusResponse;
+    const json = (await res.json().catch(() => ({}))) as Partial<StatusResponse>;
 
-    if (!res.ok || !("ok" in json) || json.ok === false) {
-      const reason = (json as any)?.reason || (json as any)?.error || `HTTP ${res.status}`;
+    if (!json || typeof (json as any).ok !== "boolean") {
+      showToast(`Couldn’t load status: HTTP ${res.status}`);
+      setLoadingData(false);
+      return;
+    }
+
+    if (!res.ok || json.ok === false) {
+      const reason = json.reason || json.error || `HTTP ${res.status}`;
       if (reason === "not_allowed") {
         router.replace("/login");
         return;
@@ -120,15 +125,14 @@ export default function StatusPage() {
 
     setClientName(json.client_name);
     setLastUpdated(json.last_updated);
-    setProjectFilesUrl((json as any).project_files_url || "");
+    setProjectFilesUrl(json.project_files_url || "");
     setRows(json.rows);
     setLoadingData(false);
-  }
+  }, [router, showToast]);
 
   useEffect(() => {
     if (!checking) fetchStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checking]);
+  }, [checking, fetchStatus]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -171,10 +175,16 @@ export default function StatusPage() {
       }),
     });
 
-    const json = (await res.json().catch(() => ({}))) as NotesResponse;
+    const json = (await res.json().catch(() => ({}))) as Partial<NotesResponse>;
 
-    if (!res.ok || !("ok" in json) || json.ok === false) {
-      const reason = (json as any)?.error || (json as any)?.reason || `HTTP ${res.status}`;
+    if (!json || typeof (json as any).ok !== "boolean") {
+      showToast(`Couldn’t send note: HTTP ${res.status}`);
+      setSendingRow(null);
+      return;
+    }
+
+    if (!res.ok || json.ok === false) {
+      const reason = json.error || json.reason || `HTTP ${res.status}`;
       showToast(`Couldn’t send note: ${reason}`);
       setSendingRow(null);
       return;
@@ -183,9 +193,7 @@ export default function StatusPage() {
     setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
 
     // ✅ ONLY CHANGE: add confirmation email reassurance
-    showToast(
-      `Note sent${json.updatedRange ? ` (logged)` : ""}. You’ll receive a confirmation email shortly.`
-    );
+    showToast(`Note sent${json.updatedRange ? ` (logged)` : ""}. You’ll receive a confirmation email shortly.`);
 
     setRecentlySentRow(rowIndex);
     window.setTimeout(() => setRecentlySentRow(null), 1500);
@@ -208,12 +216,9 @@ export default function StatusPage() {
       <div className="app-shell">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900">
-              {safeTitle}
-            </h1>
+            <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900">{safeTitle}</h1>
             <div className="mt-3 text-sm text-slate-600">
-              Last updated{" "}
-              <span className="font-semibold text-slate-900">{lastUpdated || "—"}</span>
+              Last updated <span className="font-semibold text-slate-900">{lastUpdated || "—"}</span>
             </div>
           </div>
 
@@ -250,16 +255,12 @@ export default function StatusPage() {
 
             <div>
               <div className="text-xs font-semibold text-slate-500">Total items</div>
-              <div className="mt-1 text-base font-semibold text-slate-900">
-                {loadingData ? "…" : rows.length}
-              </div>
+              <div className="mt-1 text-base font-semibold text-slate-900">{loadingData ? "…" : rows.length}</div>
             </div>
 
             <div>
               <div className="text-xs font-semibold text-slate-500">Notes</div>
-              <div className="mt-1 text-base font-semibold text-slate-900">
-                Reply per row at the far right
-              </div>
+              <div className="mt-1 text-base font-semibold text-slate-900">Reply per row at the far right</div>
             </div>
           </div>
         </div>
@@ -274,9 +275,7 @@ export default function StatusPage() {
                 <div key={i} className="mobile-card">
                   <div className="mobile-card-hd">
                     <div className="min-w-0">
-                      <div className="text-sm font-extrabold text-slate-900 truncate">
-                        {r.project || "—"}
-                      </div>
+                      <div className="text-sm font-extrabold text-slate-900 truncate">{r.project || "—"}</div>
                       <div className="mt-1 text-sm text-slate-700">{r.task || "—"}</div>
                       <div className="mt-3">
                         <span className={statusPillClass(r.status)}>{r.status || "—"}</span>
@@ -312,9 +311,7 @@ export default function StatusPage() {
                       >
                         {sendingRow === i ? "Sending…" : recentlySentRow === i ? "Sent" : "Send note"}
                       </button>
-                      <div className="mt-2 text-xs text-slate-500">
-                        Notes are securely delivered to our editing team.
-                      </div>
+                      <div className="mt-2 text-xs text-slate-500">Notes are securely delivered to our editing team.</div>
                     </div>
                   </div>
                 </div>
@@ -328,9 +325,7 @@ export default function StatusPage() {
         <div className="card-solid mt-8 overflow-hidden hidden sm:block">
           <div className="border-b border-slate-200 bg-white/60 px-6 py-4">
             <div className="text-sm font-semibold text-slate-900">Projects & Tasks</div>
-            <div className="mt-1 text-sm text-slate-600">
-              {loadingData ? "Loading…" : `${rows.length} items`}
-            </div>
+            <div className="mt-1 text-sm text-slate-600">{loadingData ? "Loading…" : `${rows.length} items`}</div>
           </div>
 
           <div className="overflow-x-auto">
@@ -385,9 +380,7 @@ export default function StatusPage() {
                             </button>
                           </div>
 
-                          <div className="mt-2 text-xs text-slate-500">
-                            Notes are securely delivered to our editing team.
-                          </div>
+                          <div className="mt-2 text-xs text-slate-500">Notes are securely delivered to our editing team.</div>
                         </td>
                       </tr>
                     );
