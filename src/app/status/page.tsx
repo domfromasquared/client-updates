@@ -329,7 +329,8 @@ export default function StatusPage() {
             </div>
           </div>
 
-          <div className="overflow-auto">
+          {/* PATCH: horizontal scroll only (prevents vertical scrollbar-in-card) */}
+          <div className="overflow-x-auto">
             <table className="min-w-[1060px] w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-left text-slate-600">

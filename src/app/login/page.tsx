@@ -61,14 +61,15 @@ export default function LoginPage() {
               </button>
 
               <p className="text-xs text-slate-500">
-                "If this is your first time logging in, please check your spam folder and mark the email as "Not spam.”
+                If this is your first time logging in, please check your spam folder and mark the email as
+                Not Spam.
               </p>
             </form>
           ) : (
             <div className="mt-8 card-solid p-6">
               <div className="text-sm font-semibold text-slate-900">Link sent</div>
               <p className="mt-1 text-sm text-slate-600">
-                If you’re authorized, check your email for a login link.
+                Check your email for your secure login link.
               </p>
             </div>
           )}
