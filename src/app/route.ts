@@ -27,6 +27,12 @@ function isValidHttpUrl(url: string) {
   return /^https?:\/\/.+/i.test(url);
 }
 
+function requireEnv(name: string) {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env var: ${name}`);
+  return v;
+}
+
 export async function POST(req: Request) {
   // ---- Auth: Bearer token ----
   const auth = req.headers.get("authorization") || "";
@@ -78,7 +84,14 @@ export async function POST(req: Request) {
 
   // ---- Sheets: rate limit + dedupe check using `client_notes` tab ----
   const sheets = await getSheetsClient();
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
+
+  let spreadsheetId = "";
+  try {
+    spreadsheetId = requireEnv("GOOGLE_SHEET_ID");
+  } catch {
+    return NextResponse.json({ ok: false, reason: "server_misconfigured" }, { status: 500 });
+  }
+
   const notesTab = process.env.GOOGLE_NOTES_TAB_NAME || "client_notes";
 
   // We will read recent notes (lightweight; fine for ~20 clients).
@@ -132,12 +145,7 @@ export async function POST(req: Request) {
     }
 
     // Dedupe check (same content within 5 min)
-    if (
-      age <= windowMs &&
-      rProject === project &&
-      rTask === task &&
-      rNote === noteRaw
-    ) {
+    if (age <= windowMs && rProject === project && rTask === task && rNote === noteRaw) {
       isDuplicate = true;
       break;
     }
@@ -145,10 +153,7 @@ export async function POST(req: Request) {
 
   // Rate limit: 5 per 24h
   if (notesLast24h >= 5) {
-    return NextResponse.json(
-      { ok: false, reason: "rate_limited" },
-      { status: 429 }
-    );
+    return NextResponse.json({ ok: false, reason: "rate_limited" }, { status: 429 });
   }
 
   // If duplicate: accept but do NOT append or email
@@ -169,7 +174,7 @@ export async function POST(req: Request) {
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [[timestamp, client_name, project, task, noteRaw, userEmail]],
+      values: [[timestamp, userEmail, client_name, project, task, noteRaw]],
     },
   });
 
