@@ -35,34 +35,47 @@ function statusPillClass(status: string) {
   return "pill border border-slate-200 bg-slate-50 text-slate-800";
 }
 
-function hasBooleanOk(v: unknown): v is { ok: boolean } {
-  return typeof v === "object" && v !== null && "ok" in v && typeof (v as { ok: unknown }).ok === "boolean";
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
 }
 
-function isStatusOk(v: unknown): v is Extract<StatusResponse, { ok: true }> {
-  if (!hasBooleanOk(v) || (v as { ok: boolean }).ok !== true) return false;
-  const o = v as any;
+function hasBooleanOk(v: unknown): v is { ok: boolean } {
+  return isRecord(v) && typeof v.ok === "boolean";
+}
+
+function isPortalRow(v: unknown): v is PortalRow {
+  if (!isRecord(v)) return false;
   return (
-    typeof o.client_name === "string" &&
-    typeof o.last_updated === "string" &&
-    Array.isArray(o.rows) &&
-    o.rows.every(
-      (r: any) =>
-        r &&
-        typeof r.project === "string" &&
-        typeof r.task === "string" &&
-        typeof r.status === "string" &&
-        typeof r.estimated_completion === "string" &&
-        typeof r.actual_completion === "string"
-    ) &&
-    (o.project_files_url === undefined || typeof o.project_files_url === "string")
+    typeof v.project === "string" &&
+    typeof v.task === "string" &&
+    typeof v.status === "string" &&
+    typeof v.estimated_completion === "string" &&
+    typeof v.actual_completion === "string"
   );
 }
 
+function isStatusOk(v: unknown): v is Extract<StatusResponse, { ok: true }> {
+  if (!hasBooleanOk(v) || v.ok !== true) return false;
+  if (!isRecord(v)) return false;
+
+  if (typeof v.client_name !== "string") return false;
+  if (typeof v.last_updated !== "string") return false;
+
+  if (!Array.isArray(v.rows)) return false;
+  if (!v.rows.every(isPortalRow)) return false;
+
+  if (v.project_files_url !== undefined && typeof v.project_files_url !== "string") return false;
+
+  return true;
+}
+
 function isNotesOk(v: unknown): v is Extract<NotesResponse, { ok: true }> {
-  if (!hasBooleanOk(v) || (v as { ok: boolean }).ok !== true) return false;
-  const o = v as any;
-  return o.updatedRange === undefined || typeof o.updatedRange === "string";
+  if (!hasBooleanOk(v) || v.ok !== true) return false;
+  if (!isRecord(v)) return false;
+
+  if (v.updatedRange !== undefined && typeof v.updatedRange !== "string") return false;
+
+  return true;
 }
 
 export default function StatusPage() {
@@ -135,7 +148,7 @@ export default function StatusPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const parsed = await res.json().catch(() => ({}));
+    const parsed: unknown = await res.json().catch(() => ({} as unknown));
 
     if (!hasBooleanOk(parsed)) {
       showToast(`Couldn’t load status: HTTP ${res.status}`);
@@ -144,13 +157,17 @@ export default function StatusPage() {
     }
 
     if (!res.ok || parsed.ok === false) {
-      const p = parsed as Extract<StatusResponse, { ok: false }>;
-      const reason = p.reason || p.error || `HTTP ${res.status}`;
+      const reason =
+        isRecord(parsed) && (typeof parsed.reason === "string" || typeof parsed.error === "string")
+          ? (parsed.reason as string | undefined) || (parsed.error as string | undefined) || `HTTP ${res.status}`
+          : `HTTP ${res.status}`;
+
       if (reason === "not_allowed") {
         setLoadingData(false); // fix: avoid stuck "Loading…"
         router.replace("/login");
         return;
       }
+
       showToast(`Couldn’t load status: ${reason}`);
       setLoadingData(false);
       return;
@@ -214,7 +231,7 @@ export default function StatusPage() {
       }),
     });
 
-    const parsed = await res.json().catch(() => ({}));
+    const parsed: unknown = await res.json().catch(() => ({} as unknown));
 
     if (!hasBooleanOk(parsed)) {
       showToast(`Couldn’t send note: HTTP ${res.status}`);
@@ -223,8 +240,11 @@ export default function StatusPage() {
     }
 
     if (!res.ok || parsed.ok === false) {
-      const p = parsed as Extract<NotesResponse, { ok: false }>;
-      const reason = p.error || p.reason || `HTTP ${res.status}`;
+      const reason =
+        isRecord(parsed) && (typeof parsed.reason === "string" || typeof parsed.error === "string")
+          ? (parsed.error as string | undefined) || (parsed.reason as string | undefined) || `HTTP ${res.status}`
+          : `HTTP ${res.status}`;
+
       showToast(`Couldn’t send note: ${reason}`);
       setSendingRow(null);
       return;
@@ -237,8 +257,6 @@ export default function StatusPage() {
     }
 
     setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
-
-    // reverted: this was not part of the audit fixes
     showToast(`Note sent${parsed.updatedRange ? ` (logged)` : ""}.`);
 
     setRecentlySentRow(rowIndex);
