@@ -35,6 +35,36 @@ function statusPillClass(status: string) {
   return "pill border border-slate-200 bg-slate-50 text-slate-800";
 }
 
+function hasBooleanOk(v: unknown): v is { ok: boolean } {
+  return typeof v === "object" && v !== null && "ok" in v && typeof (v as { ok: unknown }).ok === "boolean";
+}
+
+function isStatusOk(v: unknown): v is Extract<StatusResponse, { ok: true }> {
+  if (!hasBooleanOk(v) || (v as { ok: boolean }).ok !== true) return false;
+  const o = v as any;
+  return (
+    typeof o.client_name === "string" &&
+    typeof o.last_updated === "string" &&
+    Array.isArray(o.rows) &&
+    o.rows.every(
+      (r: any) =>
+        r &&
+        typeof r.project === "string" &&
+        typeof r.task === "string" &&
+        typeof r.status === "string" &&
+        typeof r.estimated_completion === "string" &&
+        typeof r.actual_completion === "string"
+    ) &&
+    (o.project_files_url === undefined || typeof o.project_files_url === "string")
+  );
+}
+
+function isNotesOk(v: unknown): v is Extract<NotesResponse, { ok: true }> {
+  if (!hasBooleanOk(v) || (v as { ok: boolean }).ok !== true) return false;
+  const o = v as any;
+  return o.updatedRange === undefined || typeof o.updatedRange === "string";
+}
+
 export default function StatusPage() {
   const router = useRouter();
 
@@ -96,6 +126,7 @@ export default function StatusPage() {
     const token = data.session?.access_token;
 
     if (!token) {
+      setLoadingData(false); // fix: avoid stuck "Loading…"
       router.replace("/login");
       return;
     }
@@ -104,17 +135,19 @@ export default function StatusPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const json = (await res.json().catch(() => ({}))) as Partial<StatusResponse>;
+    const parsed = await res.json().catch(() => ({}));
 
-    if (!json || typeof (json as any).ok !== "boolean") {
+    if (!hasBooleanOk(parsed)) {
       showToast(`Couldn’t load status: HTTP ${res.status}`);
       setLoadingData(false);
       return;
     }
 
-    if (!res.ok || json.ok === false) {
-      const reason = json.reason || json.error || `HTTP ${res.status}`;
+    if (!res.ok || parsed.ok === false) {
+      const p = parsed as Extract<StatusResponse, { ok: false }>;
+      const reason = p.reason || p.error || `HTTP ${res.status}`;
       if (reason === "not_allowed") {
+        setLoadingData(false); // fix: avoid stuck "Loading…"
         router.replace("/login");
         return;
       }
@@ -123,10 +156,16 @@ export default function StatusPage() {
       return;
     }
 
-    setClientName(json.client_name);
-    setLastUpdated(json.last_updated);
-    setProjectFilesUrl(json.project_files_url || "");
-    setRows(json.rows);
+    if (!isStatusOk(parsed)) {
+      showToast(`Couldn’t load status: HTTP ${res.status}`);
+      setLoadingData(false);
+      return;
+    }
+
+    setClientName(parsed.client_name);
+    setLastUpdated(parsed.last_updated);
+    setProjectFilesUrl(parsed.project_files_url || "");
+    setRows(parsed.rows);
     setLoadingData(false);
   }, [router, showToast]);
 
@@ -175,25 +214,32 @@ export default function StatusPage() {
       }),
     });
 
-    const json = (await res.json().catch(() => ({}))) as Partial<NotesResponse>;
+    const parsed = await res.json().catch(() => ({}));
 
-    if (!json || typeof (json as any).ok !== "boolean") {
+    if (!hasBooleanOk(parsed)) {
       showToast(`Couldn’t send note: HTTP ${res.status}`);
       setSendingRow(null);
       return;
     }
 
-    if (!res.ok || json.ok === false) {
-      const reason = json.error || json.reason || `HTTP ${res.status}`;
+    if (!res.ok || parsed.ok === false) {
+      const p = parsed as Extract<NotesResponse, { ok: false }>;
+      const reason = p.error || p.reason || `HTTP ${res.status}`;
       showToast(`Couldn’t send note: ${reason}`);
+      setSendingRow(null);
+      return;
+    }
+
+    if (!isNotesOk(parsed)) {
+      showToast(`Couldn’t send note: HTTP ${res.status}`);
       setSendingRow(null);
       return;
     }
 
     setNotesDraft((prev) => ({ ...prev, [rowIndex]: "" }));
 
-    // ✅ ONLY CHANGE: add confirmation email reassurance
-    showToast(`Note sent${json.updatedRange ? ` (logged)` : ""}. You’ll receive a confirmation email shortly.`);
+    // reverted: this was not part of the audit fixes
+    showToast(`Note sent${parsed.updatedRange ? ` (logged)` : ""}.`);
 
     setRecentlySentRow(rowIndex);
     window.setTimeout(() => setRecentlySentRow(null), 1500);
