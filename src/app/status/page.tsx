@@ -333,7 +333,7 @@ export default function StatusPage() {
             </div>
           </div>
 
-          <div className="overflow-auto">
+          <div className="overflow-x-auto">
             <table className="min-w-[1060px] w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-left text-slate-600">
