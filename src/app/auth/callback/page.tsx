@@ -19,6 +19,7 @@ export default function AuthCallback() {
 
     (async () => {
       try {
+        // Helpful for diagnosing production-only issues
         console.log("Callback hit:", window.location.href);
 
         // 1) If we already have a session, go straight to /status
@@ -33,8 +34,7 @@ export default function AuthCallback() {
         const code = searchParams.get("code");
 
         if (code) {
-          // ✅ FIX: pass full URL so Supabase can exchange + persist session correctly
-          const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
           console.log("Exchange error:", error?.message ?? "none");
 
           if (error) {
@@ -56,13 +56,14 @@ export default function AuthCallback() {
               return;
             }
           } else {
+            // 4) Nothing usable in the URL
             console.log("No code or tokens found in callback URL");
             if (!cancelled) router.replace("/login");
             return;
           }
         }
 
-        // Wait for session persistence before redirecting
+        // IMPORTANT: wait for the session to actually be persisted before redirecting
         for (let i = 0; i < 12; i++) {
           const { data } = await supabase.auth.getSession();
           if (data.session) {

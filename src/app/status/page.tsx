@@ -87,9 +87,8 @@ export default function StatusPage() {
     };
   }, [router]);
 
-  // Start idle logout only AFTER auth + first data load
-const idleEnabled = !checking && !loadingData;
-useIdleLogout(idleEnabled, { idleMs: 60 * 120 * 2000, redirectTo: "/login" });
+  // Start idle logout only after we know auth is valid (prevents bounce)
+  useIdleLogout(!checking, { idleMs: 30 * 60 * 1000, redirectTo: "/login" });
 
   async function fetchStatus() {
     setLoadingData(true);
@@ -220,7 +219,7 @@ useIdleLogout(idleEnabled, { idleMs: 60 * 120 * 2000, redirectTo: "/login" });
                 href={projectFilesUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-lt"
+                className="btn-secondary"
                 title="Open your project files in a new tab"
               >
                 View project files
@@ -330,8 +329,7 @@ useIdleLogout(idleEnabled, { idleMs: 60 * 120 * 2000, redirectTo: "/login" });
             </div>
           </div>
 
-          {/* PATCH: horizontal scroll only (prevents vertical scrollbar-in-card) */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto">
             <table className="min-w-[1060px] w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-left text-slate-600">
