@@ -89,7 +89,7 @@ export default function StatusPage() {
 
   // Start idle logout only AFTER auth + first data load
 const idleEnabled = !checking && !loadingData;
-useIdleLogout(idleEnabled, { idleMs: 30 * 60 * 1000, redirectTo: "/login" });
+useIdleLogout(idleEnabled, { idleMs: 60 * 120 * 2000, redirectTo: "/login" });
 
   async function fetchStatus() {
     setLoadingData(true);
