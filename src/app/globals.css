@@ -1,29 +1,25 @@
 @import "tailwindcss";
 
-/* --- App theme tokens (muted, clean, soft blue-gray) --- */
+/* Agency-inspired theme tokens */
 :root {
-  --bg: 248 250 252; /* slate-50 */
-  --panel: 255 255 255; /* white */
-  --panel-tint: 245 248 255; /* subtle blue tint */
-  --border: 226 232 240; /* slate-200 */
-  --text: 15 23 42; /* slate-900 */
-  --muted: 71 85 105; /* slate-600 */
+  --bg: 242 255 245;
+  --bg-ink: 12 12 33;
+  --panel: 255 255 255;
+  --panel-tint: 248 255 251;
+  --border: 192 214 203;
+  --text: 21 32 37;
+  --muted: 80 96 104;
 
-  /* Muted “social palette” accents (from your ref image) */
-  --accent-blue: 59 130 246; /* blue-500 */
-  --accent-red: 239 68 68; /* red-500 */
-  --accent-purple: 168 85 247; /* purple-500 */
-  --accent-teal: 20 184 166; /* teal-500 */
+  --brand-teal: 39 129 140;
+  --brand-cobalt: 21 94 239;
+  --brand-red: 233 61 61;
 
-  /* Status pill colors (muted) */
-  --status-green-bg: 220 252 231; /* green-100 */
-  --status-green: 22 101 52; /* green-800 */
-
-  --status-blue-bg: 219 234 254; /* blue-100 */
-  --status-blue: 30 64 175; /* blue-800 */
-
-  --status-amber-bg: 254 243 199; /* amber-100 */
-  --status-amber: 146 64 14; /* amber-800 */
+  --status-green-bg: 223 247 234;
+  --status-green: 25 99 71;
+  --status-blue-bg: 219 234 254;
+  --status-blue: 30 64 175;
+  --status-amber-bg: 255 243 215;
+  --status-amber: 146 64 14;
 }
 
 html,
@@ -34,9 +30,10 @@ body {
 body {
   color: rgb(var(--text));
   background:
-    radial-gradient(1000px 520px at 18% 0%, rgba(59, 130, 246, 0.10), transparent 55%),
-    radial-gradient(900px 460px at 82% 8%, rgba(168, 85, 247, 0.09), transparent 52%),
-    radial-gradient(900px 460px at 50% 100%, rgba(20, 184, 166, 0.07), transparent 55%),
+    linear-gradient(180deg, rgba(12, 12, 33, 0.96) 0, rgba(12, 12, 33, 0.96) 86px, transparent 86px),
+    radial-gradient(1000px 520px at 8% -6%, rgba(21, 94, 239, 0.22), transparent 55%),
+    radial-gradient(1200px 600px at 96% 8%, rgba(39, 129, 140, 0.20), transparent 55%),
+    radial-gradient(700px 360px at 75% 88%, rgba(233, 61, 61, 0.08), transparent 60%),
     rgb(var(--bg));
 }
 
@@ -45,14 +42,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tailwind v4 utilities (this makes `@apply btn` valid and fixes your build error) */
+/* Tailwind v4 utilities */
 @utility btn {
   @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition
          disabled:opacity-50 disabled:cursor-not-allowed
-         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30;
+         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 active:translate-y-[1px];
 }
 
-/* --- Reusable UI helpers --- */
+/* Reusable UI helpers */
 @layer components {
   .app-shell {
     @apply mx-auto w-full max-w-6xl px-4 sm:px-6 py-10;
@@ -61,12 +58,18 @@ body {
   .card {
     @apply rounded-2xl border shadow-sm;
     border-color: rgb(var(--border));
-    background: linear-gradient(180deg, rgba(245, 248, 255, 0.86), rgba(255, 255, 255, 0.96));
+    background:
+      linear-gradient(180deg, rgba(248, 255, 251, 0.98), rgba(255, 255, 255, 0.98)),
+      linear-gradient(120deg, rgba(21, 94, 239, 0.05), rgba(39, 129, 140, 0.04));
+    box-shadow:
+      0 14px 36px -28px rgba(12, 12, 33, 0.45),
+      0 1px 0 rgba(255, 255, 255, 0.8) inset;
   }
 
   .card-solid {
     @apply rounded-2xl border bg-white shadow-sm;
     border-color: rgb(var(--border));
+    box-shadow: 0 10px 26px -24px rgba(12, 12, 33, 0.35);
   }
 
   .muted {
@@ -80,28 +83,36 @@ body {
 
   .btn-primary {
     @apply btn text-white;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.90));
+    background: linear-gradient(
+      180deg,
+      rgba(21, 94, 239, 0.98),
+      rgba(21, 94, 239, 0.9)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 10px 20px -14px rgba(21, 94, 239, 0.85);
   }
 
   .btn-secondary {
-    @apply btn border bg-white text-slate-900;
-    border-color: rgb(var(--border));
+    @apply btn border bg-transparent text-slate-900;
+    border-color: rgba(39, 129, 140, 0.55);
+    color: rgb(15 23 42);
+    background: rgba(255, 255, 255, 0.75);
   }
 
   .input {
-    @apply w-full rounded-xl border bg-white px-4 py-3 text-slate-900 outline-none transition;
-    border-color: rgb(var(--border));
+    @apply w-full rounded-xl border bg-white/95 px-4 py-3 text-slate-900 outline-none transition;
+    border-color: rgba(39, 129, 140, 0.35);
   }
 
   .input:focus {
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
-    border-color: rgba(59, 130, 246, 0.55);
+    box-shadow: 0 0 0 4px rgba(21, 94, 239, 0.13);
+    border-color: rgba(21, 94, 239, 0.6);
   }
 
   .toast {
     @apply rounded-2xl border p-4 text-sm;
-    border-color: rgb(var(--border));
-    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(39, 129, 140, 0.25);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(10px);
   }
 
@@ -131,6 +142,7 @@ body {
   .mobile-card {
     @apply rounded-2xl border bg-white shadow-sm;
     border-color: rgb(var(--border));
+    box-shadow: 0 10px 26px -24px rgba(12, 12, 33, 0.35);
   }
 
   .mobile-card-hd {
@@ -152,4 +164,35 @@ body {
   .kv-value {
     @apply mt-1 text-sm font-semibold text-slate-900;
   }
+}
+
+/* Theme hooks only; no component logic changes */
+.theme-agency .portal-topbar {
+  background: rgba(12, 12, 33, 0.86) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(10px);
+}
+
+.theme-agency .portal-logo-shell {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+.theme-agency .portal-secure-pill {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgb(241 245 249) !important;
+}
+
+.theme-agency .portal-topbar .text-slate-900 {
+  color: rgb(248 250 252) !important;
+}
+
+.theme-agency .portal-topbar .text-slate-600 {
+  color: rgb(191 219 254) !important;
+}
+
+.theme-agency .portal-topbar .border-slate-200,
+.theme-agency .portal-topbar .border-slate-200\/70 {
+  border-color: rgba(255, 255, 255, 0.22) !important;
 }

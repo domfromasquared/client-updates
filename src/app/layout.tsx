@@ -10,13 +10,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body className="theme-agency">
         {/* Top navigation / header */}
-        <div className="w-full border-b border-slate-200/70 bg-white/70 backdrop-blur">
+        <div className="portal-topbar w-full border-b border-slate-200/70 bg-white/70 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-4">
             <div className="flex items-center gap-3">
               {/* LOGO */}
-              <div className="relative h-9 w-9 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="portal-logo-shell relative h-9 w-9 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <Image
                   src="/logo.png"
                   alt="A Squared logo"
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             {/* Right-side badge */}
             <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600">
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1">
+              <span className="portal-secure-pill inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500/70" />
                 Secure access
               </span>
