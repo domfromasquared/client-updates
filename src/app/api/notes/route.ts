@@ -4,7 +4,15 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getSheetsClient } from "@/lib/google/sheets";
 
 const NOTES_SHEET_TITLE = "client_notes";
-const NOTES_HEADERS = ["timestamp", "client_name", "project", "task", "note", "submitted_by"];
+const NOTES_HEADERS = [
+  "timestamp",
+  "client_name",
+  "project",
+  "task",
+  "note",
+  "submitted_by",
+  "submitter_timezone",
+];
 
 async function ensureNotesSheetExists(sheets: any, spreadsheetId: string) {
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
@@ -23,7 +31,7 @@ async function ensureNotesSheetExists(sheets: any, spreadsheetId: string) {
   // 2) Add header row
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${NOTES_SHEET_TITLE}!A1:F1`,
+    range: `${NOTES_SHEET_TITLE}!A1:G1`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [NOTES_HEADERS] },
   });
@@ -51,12 +59,14 @@ export async function POST(req: Request) {
     project?: string;
     task?: string;
     note?: string;
+    submitter_timezone?: string;
   };
 
   const clientName = (body?.client_name || "").trim();
   const project = (body?.project || "").trim();
   const task = (body?.task || "").trim();
   const note = (body?.note || "").trim();
+  const submitterTimeZone = (body?.submitter_timezone || "").trim() || "UTC";
 
   if (!clientName || !project || !note) {
     return NextResponse.json(
@@ -77,11 +87,11 @@ export async function POST(req: Request) {
     // Append note
     const result = await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${NOTES_SHEET_TITLE}!A:F`,
+      range: `${NOTES_SHEET_TITLE}!A:G`,
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
       requestBody: {
-        values: [[timestamp, clientName, project, task, note, submittedBy]],
+        values: [[timestamp, clientName, project, task, note, submittedBy, submitterTimeZone]],
       },
     });
 

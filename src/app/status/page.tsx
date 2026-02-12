@@ -52,6 +52,8 @@ function statusPillClass(status: string) {
 
 export default function StatusPage() {
   const router = useRouter();
+  const browserTimeZone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
   const [checking, setChecking] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
@@ -186,6 +188,7 @@ export default function StatusPage() {
         project: row.project,
         task: row.task,
         note,
+        submitter_timezone: browserTimeZone,
       }),
     });
 
