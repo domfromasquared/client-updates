@@ -1,4 +1,4 @@
-name: Deploy static site to GitHub Pages
+name: Deploy Next.js (static) to GitHub Pages
 
 on:
   push:
@@ -21,10 +21,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # IMPORTANT: baked into the static build so GH Pages calls your API host
+      - name: Build (static export)
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://client-updates-omega.vercel.app
+        run: npm run build
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs
+          path: ./out
 
   deploy:
     needs: build
