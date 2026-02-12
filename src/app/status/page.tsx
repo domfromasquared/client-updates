@@ -115,7 +115,7 @@ export default function StatusPage() {
       return;
     }
 
-    const res = await fetch("/api/status", {
+    const res = await fetch(apiUrl("/api/status"), {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -177,7 +177,7 @@ export default function StatusPage() {
       return;
     }
 
-    const res = await fetch("/api/notes", {
+    const res = await fetch(apiUrl("/api/notes"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

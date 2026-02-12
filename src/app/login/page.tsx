@@ -40,7 +40,7 @@ export default function LoginPage() {
     setLoading(true);
 
     // Gate requests so we only send magic links to approved emails.
-    const allowRes = await fetch("/api/auth/allowed", {
+    const allowRes = await fetch(apiUrl("/api/auth/allowed"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: normalizedEmail }),
