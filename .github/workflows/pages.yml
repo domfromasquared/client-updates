@@ -32,6 +32,8 @@ jobs:
 
       - name: Build (static export)
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://client-updates-omega.vercel.app
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
