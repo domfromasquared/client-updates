@@ -294,7 +294,6 @@ export default function StatusPage() {
                       <div className="text-sm font-extrabold text-slate-900 truncate">
                         {r.project || "—"}
                       </div>
-                      <div className="mt-1 text-sm text-slate-700">{r.task || "—"}</div>
                       <div className="mt-3">
                         <span className={statusPillClass(r.status)}>{r.status || "—"}</span>
                       </div>
@@ -306,10 +305,6 @@ export default function StatusPage() {
                       <div>
                         <div className="kv-label">Estimated</div>
                         <div className="kv-value">{r.estimated_completion || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="kv-label">Actual</div>
-                        <div className="kv-value">{r.actual_completion || "—"}</div>
                       </div>
                     </div>
 
@@ -360,10 +355,8 @@ export default function StatusPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-white text-left text-slate-600">
                   <th className="px-6 py-4 font-semibold">Project</th>
-                  <th className="px-6 py-4 font-semibold">Task</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 font-semibold">Estimated Completion</th>
-                  <th className="px-6 py-4 font-semibold">Actual Completion</th>
                   <th className="px-6 py-4 font-semibold">Notes</th>
                 </tr>
               </thead>
@@ -381,12 +374,10 @@ export default function StatusPage() {
                     return (
                       <tr key={i} className="border-t border-slate-200 bg-white">
                         <td className="px-6 py-5 font-semibold text-slate-900">{r.project || "—"}</td>
-                        <td className="px-6 py-5 text-slate-800">{r.task || "—"}</td>
                         <td className="px-6 py-5">
                           <span className={statusPillClass(r.status)}>{r.status || "—"}</span>
                         </td>
                         <td className="px-6 py-5 text-slate-800">{r.estimated_completion || "—"}</td>
-                        <td className="px-6 py-5 text-slate-800">{r.actual_completion || "—"}</td>
 
                         <td className="px-6 py-5">
                           <div className="flex gap-2 items-start">
