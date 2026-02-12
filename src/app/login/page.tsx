@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase/client";
 
 const RESEND_COOLDOWN_SECONDS = 60;
