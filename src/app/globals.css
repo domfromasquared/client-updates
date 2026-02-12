@@ -138,6 +138,67 @@ body {
     border: 1px solid rgba(146, 64, 14, 0.15);
   }
 
+  /* Exact status chip colors from sheet rules */
+  .pill-status-not-started {
+    background: #c9c9c9;
+    color: #101010;
+    border: 1px solid #b7b7b7;
+  }
+
+  .pill-status-in-progress {
+    background: #efd98a;
+    color: #101010;
+    border: 1px solid #dcc670;
+  }
+
+  .pill-status-edit-delivered {
+    background: #6c9fce;
+    color: #101010;
+    border: 1px solid #5a89b4;
+  }
+
+  .pill-status-done {
+    background: #49d211;
+    color: #101010;
+    border: 1px solid #3fb40f;
+  }
+
+  .pill-status-client-notes {
+    background: #d7b61a;
+    color: #101010;
+    border: 1px solid #bf9f12;
+  }
+
+  .pill-status-missing-content {
+    background: #de0000;
+    color: #101010;
+    border: 1px solid #c00000;
+  }
+
+  .pill-status-client-scrapped {
+    background: #f89b00;
+    color: #101010;
+    border: 1px solid #d98900;
+  }
+
+  .pill-status-raw-delivered {
+    background: #a6c59b;
+    color: #101010;
+    border: 1px solid #90ad86;
+  }
+
+  .pill-status-follow-up {
+    background: #afc4d7;
+    color: #101010;
+    border: 1px solid #99afc3;
+  }
+
+  .pill-status-scheduled {
+    background: #a89cc5;
+    color: #101010;
+    border: 1px solid #9388ad;
+  }
+
   /* --- Mobile-only helpers (added, no impact on desktop) --- */
   .mobile-card {
     @apply rounded-2xl border bg-white shadow-sm;

@@ -28,11 +28,25 @@ type NotesResponse =
   | { ok: false; reason?: string; error?: string };
 
 function statusPillClass(status: string) {
-  const s = (status || "").toLowerCase();
-  if (s.includes("complete")) return "pill pill-complete";
-  if (s.includes("progress")) return "pill pill-progress";
-  if (s.includes("not")) return "pill pill-notstarted";
-  // fallback
+  const s = (status || "").trim().toLowerCase();
+
+  const exactMap: Record<string, string> = {
+    "not started": "pill pill-status-not-started",
+    "in progress": "pill pill-status-in-progress",
+    "edit delivered": "pill pill-status-edit-delivered",
+    done: "pill pill-status-done",
+    "client notes": "pill pill-status-client-notes",
+    "missing content": "pill pill-status-missing-content",
+    "client scrapped": "pill pill-status-client-scrapped",
+    "raw delivered": "pill pill-status-raw-delivered",
+    "follow up": "pill pill-status-follow-up",
+    scheduled: "pill pill-status-scheduled",
+  };
+
+  if (exactMap[s]) return exactMap[s];
+  if (s.includes("done") || s.includes("complete")) return "pill pill-status-done";
+  if (s.includes("progress")) return "pill pill-status-in-progress";
+  if (s.includes("not")) return "pill pill-status-not-started";
   return "pill border border-slate-200 bg-slate-50 text-slate-800";
 }
 
