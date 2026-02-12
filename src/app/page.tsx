@@ -32,7 +32,7 @@ export default function HomePage() {
             </div>
             <div className="card-solid p-5">
               <div className="text-sm font-semibold text-slate-900">Secure</div>
-              <div className="mt-1 text-sm text-slate-600">Auth + locked API routes.</div>
+              <div className="mt-1 text-sm text-slate-600">Protected portal access + locked API routes.</div>
             </div>
           </div>
         </div>
