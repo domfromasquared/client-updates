@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getSheetsClient } from "@/lib/google/sheets";
 
+export const dynamic = "force-dynamic";
+
 const NOTES_SHEET_TITLE = "client_notes";
 const NOTES_HEADERS = [
   "timestamp",

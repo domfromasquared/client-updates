@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getSheetsClient, rowsFromValues } from "@/lib/google/sheets";
 
+export const dynamic = "force-dynamic";
+
 type SheetRow = Record<string, string>;
 
 function toISODateValue(v: string) {
