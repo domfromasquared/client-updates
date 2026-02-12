@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getSheetsClient, rowsFromValues } from "@/lib/google/sheets";
 
+type SheetRow = Record<string, string>;
+
 function toISODateValue(v: string) {
   // works if your sheet uses YYYY-MM-DD; if not, we’ll just treat it as text
   return (v || "").trim();
@@ -20,15 +22,77 @@ function firstNonEmpty(values: Array<string | null | undefined>) {
   return values.map((v) => (v || "").trim()).find(Boolean) || "";
 }
 
-function projectFilesFromRow(row: Record<string, string>) {
+function readRowValue(row: SheetRow, keys: string[]) {
+  const direct = keys.map((k) => (row[k] || "").trim()).find(Boolean);
+  if (direct) return direct;
+
+  // Fallback for headers like "Client Name", "EMAIL", etc.
+  const normalizedMap = Object.fromEntries(
+    Object.entries(row).map(([k, v]) => [
+      k
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, ""),
+      (v || "").trim(),
+    ])
+  );
+
+  return keys
+    .map((k) =>
+      k
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+    )
+    .map((k) => normalizedMap[k] || "")
+    .find(Boolean) || "";
+}
+
+function projectFilesFromRow(row: SheetRow) {
+  return readRowValue(row, [
+    "project_files_folder",
+    "project_files_link",
+    "project_files_url",
+    "project_files",
+    "folder_link",
+    "project_folder",
+    "column_l",
+  ]);
+}
+
+function rowEmail(row: SheetRow) {
+  return readRowValue(row, ["email", "client_email", "user_email"]).toLowerCase();
+}
+
+function rowClientName(row: SheetRow) {
+  return readRowValue(row, ["client_name", "client", "name"]);
+}
+
+function rowLastUpdated(row: SheetRow) {
+  return readRowValue(row, ["last_updated", "updated_at", "last_update"]);
+}
+
+function rowProject(row: SheetRow) {
+  return readRowValue(row, ["project", "project_name"]);
+}
+
+function rowTask(row: SheetRow) {
+  return readRowValue(row, ["task", "item", "deliverable"]);
+}
+
+function rowStatus(row: SheetRow) {
+  return readRowValue(row, ["status", "project_status"]);
+}
+
+function rowEstimatedCompletion(row: SheetRow) {
+  return readRowValue(row, ["estimated_completion", "estimated_completion_date", "eta"]);
+}
+
+function rowActualCompletion(row: SheetRow) {
   return firstNonEmpty([
-    row.project_files_folder,
-    row.project_files_link,
-    row.project_files_url,
-    row.project_files,
-    row.folder_link,
-    row.project_folder,
-    row.column_l,
+    readRowValue(row, ["actual_completion", "actual_completion_date", "completed_at"]),
   ]);
 }
 
@@ -65,115 +129,121 @@ async function getAllowlistRecord(email: string) {
     .maybeSingle();
 
   if (error) {
-    // If table is not provisioned yet, keep current behavior by falling back to sheet-based access.
-    if ((error as { code?: string }).code === "42P01") {
-      return { mode: "missing_table" as const, row: null };
+    const code = (error as { code?: string }).code;
+    // If allowlist table (or expected email column) is not provisioned yet,
+    // fall back to sheet-based access instead of failing the request.
+    if (code === "42P01" || code === "42703") {
+      return { mode: "allowlist_unavailable" as const, row: null };
     }
-    throw error;
+    return { mode: "allowlist_query_error" as const, row: null };
   }
 
   return { mode: "table" as const, row: (data || null) as Record<string, unknown> | null };
 }
 
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization") || "";
-  const match = auth.match(/^Bearer (.+)$/);
+  try {
+    const auth = req.headers.get("authorization") || "";
+    const match = auth.match(/^Bearer (.+)$/);
 
-  if (!match) {
-    return NextResponse.json({ ok: false, reason: "missing_bearer" }, { status: 401 });
-  }
-
-  const token = match[1];
-  const { data: userData, error: userErr } = await supabaseServer.auth.getUser(token);
-
-  if (userErr || !userData?.user?.email) {
-    return NextResponse.json({ ok: false, reason: "invalid_token" }, { status: 401 });
-  }
-
-  const email = userData.user.email.toLowerCase();
-  const allowlist = await getAllowlistRecord(email);
-
-  if (allowlist.mode === "table" && !rowIsAllowlisted(allowlist.row)) {
-    return NextResponse.json({ ok: false, reason: "not_allowed" }, { status: 403 });
-  }
-
-  const allowlistClientName = firstNonEmpty([
-    String(allowlist.row?.client_name || ""),
-    String(allowlist.row?.name || ""),
-    titleFromEmail(email),
-  ]);
-  const allowlistProjectFilesUrl = firstNonEmpty([
-    String(allowlist.row?.project_files_url || ""),
-    String(allowlist.row?.project_files_folder || ""),
-    String(allowlist.row?.project_files_link || ""),
-  ]);
-
-  const sheets = await getSheetsClient();
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
-
-  const updatesResp = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: "updates!A:L",
-  });
-
-  const values = updatesResp.data.values as string[][] | undefined;
-  if (!values?.length) {
-    return NextResponse.json({ ok: true, client_name: "", last_updated: "", rows: [] });
-  }
-
-  const allRows = rowsFromValues(values);
-
-  // Filter to the logged-in user's rows
-  const clientRows = allRows.filter((r) => (r.email || "").toLowerCase() === email);
-
-  if (!clientRows.length) {
-    // If allowlisted, return a friendly empty payload instead of unauthorized.
-    if (allowlist.mode === "table" && rowIsAllowlisted(allowlist.row)) {
-      return NextResponse.json({
-        ok: true,
-        client_name: allowlistClientName || titleFromEmail(email),
-        last_updated: "",
-        project_files_url: allowlistProjectFilesUrl,
-        no_active_projects: true,
-        rows: [],
-      });
+    if (!match) {
+      return NextResponse.json({ ok: false, reason: "missing_bearer" }, { status: 401 });
     }
 
-    // When no allowlist table exists yet, preserve previous behavior:
-    // access requires at least one matching sheet row.
-    return NextResponse.json({ ok: false, reason: "not_allowed" }, { status: 403 });
+    const token = match[1];
+    const { data: userData, error: userErr } = await supabaseServer.auth.getUser(token);
+
+    if (userErr || !userData?.user?.email) {
+      return NextResponse.json({ ok: false, reason: "invalid_token" }, { status: 401 });
+    }
+
+    const email = userData.user.email.toLowerCase();
+    const allowlist = await getAllowlistRecord(email);
+
+    if (allowlist.mode === "table" && !rowIsAllowlisted(allowlist.row)) {
+      return NextResponse.json({ ok: false, reason: "not_allowed" }, { status: 403 });
+    }
+
+    const allowlistClientName = firstNonEmpty([
+      String(allowlist.row?.client_name || ""),
+      String(allowlist.row?.name || ""),
+      titleFromEmail(email),
+    ]);
+    const allowlistProjectFilesUrl = firstNonEmpty([
+      String(allowlist.row?.project_files_url || ""),
+      String(allowlist.row?.project_files_folder || ""),
+      String(allowlist.row?.project_files_link || ""),
+    ]);
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
+
+    const updatesResp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "updates!A:L",
+    });
+
+    const values = updatesResp.data.values as string[][] | undefined;
+    if (!values?.length) {
+      return NextResponse.json({ ok: true, client_name: "", last_updated: "", rows: [] });
+    }
+
+    const allRows = rowsFromValues(values) as SheetRow[];
+
+    // Filter to the logged-in user's rows
+    const clientRows = allRows.filter((r) => rowEmail(r) === email);
+
+    if (!clientRows.length) {
+      // If allowlisted, return a friendly empty payload instead of unauthorized.
+      if (allowlist.mode === "table" && rowIsAllowlisted(allowlist.row)) {
+        return NextResponse.json({
+          ok: true,
+          client_name: allowlistClientName || titleFromEmail(email),
+          last_updated: "",
+          project_files_url: allowlistProjectFilesUrl,
+          no_active_projects: true,
+          rows: [],
+        });
+      }
+
+      // When allowlist isn't available, preserve current sheet-based access behavior:
+      // access requires at least one matching sheet row.
+      return NextResponse.json({ ok: false, reason: "not_allowed" }, { status: 403 });
+    }
+
+    const clientName = firstNonEmpty([rowClientName(clientRows[0]), allowlistClientName]);
+
+    // Compute "last updated" as the most recent non-empty last_updated string (simple + robust)
+    const lastUpdated =
+      [...clientRows]
+        .map((r) => rowLastUpdated(r))
+        .filter(Boolean)
+        .slice(-1)[0] || "";
+
+    const projectFilesUrl = firstNonEmpty([
+      ...clientRows.map((r) => projectFilesFromRow(r)),
+      allowlistProjectFilesUrl,
+    ]);
+
+    // Shape table rows (don’t include email/client_id/next_due_date in response)
+    const rows = clientRows.map((r) => ({
+      project: rowProject(r),
+      task: rowTask(r),
+      status: rowStatus(r),
+      estimated_completion: toISODateValue(rowEstimatedCompletion(r)),
+      actual_completion: toISODateValue(rowActualCompletion(r)),
+    }));
+
+    return NextResponse.json({
+      ok: true,
+      client_name: clientName,
+      last_updated: lastUpdated,
+      project_files_url: projectFilesUrl,
+      no_active_projects: false,
+      rows,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_error";
+    return NextResponse.json({ ok: false, reason: "status_load_failed", error: message }, { status: 500 });
   }
-
-  const clientName = firstNonEmpty([clientRows[0].client_name, allowlistClientName]);
-
-  // Compute "last updated" as the most recent non-empty last_updated string (simple + robust)
-  // If you use real dates, we can sort by date later; for now pick the latest non-empty by appearance.
-  const lastUpdated =
-    [...clientRows]
-      .map((r) => (r.last_updated || "").trim())
-      .filter(Boolean)
-      .slice(-1)[0] || "";
-
-  const projectFilesUrl = firstNonEmpty([
-    ...clientRows.map((r) => projectFilesFromRow(r)),
-    allowlistProjectFilesUrl,
-  ]);
-
-  // Shape table rows (don’t include email/client_id/next_due_date in the response unless you want it later)
-  const rows = clientRows.map((r) => ({
-    project: (r.project || "").trim(),
-    task: (r.task || "").trim(),
-    status: (r.status || "").trim(),
-    estimated_completion: toISODateValue(r.estimated_completion || ""),
-    actual_completion: toISODateValue(r.actual_completion || ""),
-  }));
-
-  return NextResponse.json({
-    ok: true,
-    client_name: clientName,
-    last_updated: lastUpdated,
-    project_files_url: projectFilesUrl,
-    no_active_projects: false,
-    rows,
-  });
 }

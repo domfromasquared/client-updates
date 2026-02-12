@@ -106,7 +106,12 @@ export default function StatusPage() {
     const json = (await res.json().catch(() => ({}))) as StatusResponse;
 
     if (!res.ok || !("ok" in json) || json.ok === false) {
-      const reason = (json as any)?.reason || (json as any)?.error || `HTTP ${res.status}`;
+      const apiReason = (json as any)?.reason;
+      const apiError = (json as any)?.error;
+      const reason =
+        apiReason && apiError
+          ? `${apiReason}: ${apiError}`
+          : apiReason || apiError || `HTTP ${res.status}`;
       if (reason === "not_allowed") {
         router.replace("/login");
         return;

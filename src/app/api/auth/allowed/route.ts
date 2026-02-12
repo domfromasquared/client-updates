@@ -3,9 +3,37 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getSheetsClient, rowsFromValues } from "@/lib/google/sheets";
 
 type AllowlistRow = Record<string, unknown> | null;
+type SheetRow = Record<string, string>;
 
 function normalizeEmail(input: string) {
   return input.trim().toLowerCase();
+}
+
+function readRowValue(row: SheetRow, keys: string[]) {
+  const direct = keys.map((k) => (row[k] || "").trim()).find(Boolean);
+  if (direct) return direct;
+
+  const normalizedMap = Object.fromEntries(
+    Object.entries(row).map(([k, v]) => [
+      k
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, ""),
+      (v || "").trim(),
+    ])
+  );
+
+  return keys
+    .map((k) =>
+      k
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+    )
+    .map((k) => normalizedMap[k] || "")
+    .find(Boolean) || "";
 }
 
 function allowlistEnabled() {
@@ -62,8 +90,11 @@ async function allowedViaSheet(email: string) {
   const values = updatesResp.data.values as string[][] | undefined;
   if (!values?.length) return false;
 
-  const rows = rowsFromValues(values);
-  return rows.some((r) => normalizeEmail(r.email || "") === email);
+  const rows = rowsFromValues(values) as SheetRow[];
+  return rows.some((r) => {
+    const rowEmail = readRowValue(r, ["email", "client_email", "user_email"]);
+    return normalizeEmail(rowEmail) === email;
+  });
 }
 
 export async function POST(req: Request) {
