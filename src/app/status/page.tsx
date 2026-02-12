@@ -253,8 +253,12 @@ export default function StatusPage() {
           </div>
         </div>
 
-        {/* Toast */}
-        {toast ? <div className="toast mt-6 text-slate-700">{toast}</div> : null}
+        {/* Centered toast overlay */}
+        {toast ? (
+          <div className="toast-overlay" role="status" aria-live="polite" aria-atomic="true">
+            <div className="toast toast-modal text-slate-700">{toast}</div>
+          </div>
+        ) : null}
 
         {/* Summary strip */}
         <div className="card mt-8 p-5">
