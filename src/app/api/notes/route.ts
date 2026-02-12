@@ -38,6 +38,18 @@ async function ensureNotesSheetExists(sheets: any, spreadsheetId: string) {
 }
 
 export async function POST(req: Request) {
+  // IMPORTANT:
+  // GitHub Pages static export runs `next build` without server env vars.
+  // We guard server-only dependencies so the build doesn't crash.
+  if (!supabaseServer) {
+    return NextResponse.json({ ok: false, reason: "server_env_missing" }, { status: 500 });
+  }
+
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  if (!spreadsheetId) {
+    return NextResponse.json({ ok: false, reason: "missing_google_sheet_id" }, { status: 500 });
+  }
+
   // Verify bearer token
   const auth = req.headers.get("authorization") || "";
   const match = auth.match(/^Bearer (.+)$/);
@@ -75,7 +87,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
   const timestamp = new Date().toISOString();
 
   try {

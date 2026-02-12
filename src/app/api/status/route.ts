@@ -38,16 +38,18 @@ function readRowValue(row: SheetRow, keys: string[]) {
     ])
   );
 
-  return keys
-    .map((k) =>
-      k
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-    )
-    .map((k) => normalizedMap[k] || "")
-    .find(Boolean) || "";
+  return (
+    keys
+      .map((k) =>
+        k
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+      )
+      .map((k) => normalizedMap[k] || "")
+      .find(Boolean) || ""
+  );
 }
 
 function projectFilesFromRow(row: SheetRow) {
@@ -118,7 +120,10 @@ function rowIsAllowlisted(row: Record<string, unknown> | null) {
 }
 
 async function getAllowlistRecord(email: string) {
+  // If allowlist is disabled, or server env isn't available (GH Pages build),
+  // treat as unavailable and fall back to Sheets behavior.
   if (!allowlistEnabled()) return { mode: "disabled" as const, row: null };
+  if (!supabaseServer) return { mode: "missing_env" as const, row: null };
 
   const table = process.env.SUPABASE_ALLOWLIST_TABLE || "portal_allowlist";
   const { data, error } = await supabaseServer
@@ -143,6 +148,18 @@ async function getAllowlistRecord(email: string) {
 
 export async function GET(req: Request) {
   try {
+    // IMPORTANT:
+    // GitHub Pages static export runs `next build` without server env vars.
+    // Guard server-only dependencies so build doesn't crash.
+    if (!supabaseServer) {
+      return NextResponse.json({ ok: false, reason: "server_env_missing" }, { status: 500 });
+    }
+
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+    if (!spreadsheetId) {
+      return NextResponse.json({ ok: false, reason: "missing_google_sheet_id" }, { status: 500 });
+    }
+
     const auth = req.headers.get("authorization") || "";
     const match = auth.match(/^Bearer (.+)$/);
 
@@ -176,7 +193,6 @@ export async function GET(req: Request) {
     ]);
 
     const sheets = await getSheetsClient();
-    const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
 
     const updatesResp = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -244,6 +260,9 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
-    return NextResponse.json({ ok: false, reason: "status_load_failed", error: message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, reason: "status_load_failed", error: message },
+      { status: 500 }
+    );
   }
 }

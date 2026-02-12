@@ -24,16 +24,18 @@ function readRowValue(row: SheetRow, keys: string[]) {
     ])
   );
 
-  return keys
-    .map((k) =>
-      k
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-    )
-    .map((k) => normalizedMap[k] || "")
-    .find(Boolean) || "";
+  return (
+    keys
+      .map((k) =>
+        k
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+      )
+      .map((k) => normalizedMap[k] || "")
+      .find(Boolean) || ""
+  );
 }
 
 function allowlistEnabled() {
@@ -60,6 +62,10 @@ function rowIsAllowlisted(row: AllowlistRow) {
 async function allowedViaSupabaseAllowlist(email: string) {
   if (!allowlistEnabled()) return { mode: "disabled" as const, allowed: false };
 
+  // GitHub Pages build won't have server env vars; Vercel will.
+  // If the server client isn't available, we fall back to Sheets below.
+  if (!supabaseServer) return { mode: "missing_env" as const, allowed: false };
+
   const table = process.env.SUPABASE_ALLOWLIST_TABLE || "portal_allowlist";
   const { data, error } = await supabaseServer
     .from(table)
@@ -79,8 +85,10 @@ async function allowedViaSupabaseAllowlist(email: string) {
 }
 
 async function allowedViaSheet(email: string) {
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  if (!spreadsheetId) return false;
+
   const sheets = await getSheetsClient();
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
 
   const updatesResp = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -112,7 +120,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, allowed: allowlist.allowed });
     }
 
-    // Fallback when allowlist table is not configured yet.
+    // Fallback when allowlist is disabled, env is missing, or table doesn't exist yet.
     const allowedFromSheet = await allowedViaSheet(email);
     return NextResponse.json({ ok: true, allowed: allowedFromSheet });
   } catch {
