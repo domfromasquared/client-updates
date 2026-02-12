@@ -13,7 +13,14 @@ type PortalRow = {
 };
 
 type StatusResponse =
-  | { ok: true; client_name: string; last_updated: string; rows: PortalRow[] }
+  | {
+      ok: true;
+      client_name: string;
+      last_updated: string;
+      project_files_url?: string;
+      no_active_projects?: boolean;
+      rows: PortalRow[];
+    }
   | { ok: false; reason?: string; error?: string };
 
 type NotesResponse =
@@ -37,6 +44,8 @@ export default function StatusPage() {
 
   const [clientName, setClientName] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
+  const [projectFilesUrl, setProjectFilesUrl] = useState("");
+  const [noActiveProjects, setNoActiveProjects] = useState(false);
   const [rows, setRows] = useState<PortalRow[]>([]);
 
   const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
@@ -109,6 +118,8 @@ export default function StatusPage() {
 
     setClientName(json.client_name);
     setLastUpdated(json.last_updated);
+    setProjectFilesUrl((json.project_files_url || "").trim());
+    setNoActiveProjects(Boolean(json.no_active_projects));
     setRows(json.rows);
     setLoadingData(false);
   }
@@ -204,6 +215,16 @@ export default function StatusPage() {
           </div>
 
           <div className="flex gap-2">
+            {projectFilesUrl ? (
+              <a
+                href={projectFilesUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="btn-secondary"
+              >
+                View Project Files
+              </a>
+            ) : null}
             <button onClick={fetchStatus} className="btn-secondary">
               Refresh
             </button>
@@ -298,7 +319,11 @@ export default function StatusPage() {
               );
             })
           ) : (
-            <div className="card-solid p-6 text-slate-600">No items found.</div>
+            <div className="card-solid p-6 text-slate-600">
+              {noActiveProjects
+                ? "No active projects right now. We’ll post updates here as soon as your next item starts."
+                : "No items found."}
+            </div>
           )}
         </div>
 
@@ -373,7 +398,9 @@ export default function StatusPage() {
                 ) : (
                   <tr>
                     <td className="px-6 py-10 text-slate-600" colSpan={6}>
-                      No items found.
+                      {noActiveProjects
+                        ? "No active projects right now. We’ll post updates here as soon as your next item starts."
+                        : "No items found."}
                     </td>
                   </tr>
                 )}
