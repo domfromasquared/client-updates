@@ -40,6 +40,12 @@ export default function LoginPage() {
 
     setLoading(true);
 
+    if (!supabase) {
+  setToast("Portal login is temporarily unavailable (Supabase is not configured).");
+  setLoading(false);
+  return;
+}
+
     // Gate requests so we only send magic links to approved emails.
     const allowRes = await fetch(apiUrl("/api/auth/allowed"), {
       method: "POST",

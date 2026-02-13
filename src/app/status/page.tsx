@@ -84,10 +84,24 @@ export default function StatusPage() {
     };
   }, []);
 
+  // ✅ ADD THIS GUARD EFFECT (place it right after your cleanup effect above)
+  useEffect(() => {
+    if (!supabase) {
+      // If Supabase isn't configured in this static build, bounce to login.
+      router.replace("/login");
+    }
+  }, [router]);
+
   useEffect(() => {
     let cancelled = false;
 
     async function checkSessionWithRetry() {
+      // ✅ ADD THIS GUARD (first line inside the function)
+      if (!supabase) {
+        if (!cancelled) router.replace("/login");
+        return;
+      }
+
       for (let i = 0; i < 12; i++) {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
@@ -107,6 +121,14 @@ export default function StatusPage() {
 
   async function fetchStatus() {
     setLoadingData(true);
+
+    // ✅ ADD THIS GUARD (before any supabase.auth calls)
+    if (!supabase) {
+      showToast("Portal is not configured yet. Please try again later.");
+      setLoadingData(false);
+      router.replace("/login");
+      return;
+    }
 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;

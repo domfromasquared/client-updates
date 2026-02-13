@@ -19,7 +19,13 @@ export default function AuthCallback() {
 
     (async () => {
       try {
-        // Helpful for diagnosing production-only issues
+        // IMPORTANT: don’t crash when NEXT_PUBLIC_SUPABASE_* env vars are missing at build time
+        if (!supabase) {
+          console.error("Supabase client is not configured (missing NEXT_PUBLIC_SUPABASE_URL/KEY).");
+          if (!cancelled) router.replace("/login");
+          return;
+        }
+
         console.log("Callback hit:", window.location.href);
 
         // 1) If we already have a session, go straight to /status
@@ -56,14 +62,13 @@ export default function AuthCallback() {
               return;
             }
           } else {
-            // 4) Nothing usable in the URL
             console.log("No code or tokens found in callback URL");
             if (!cancelled) router.replace("/login");
             return;
           }
         }
 
-        // IMPORTANT: wait for the session to actually be persisted before redirecting
+        // Wait for session persistence
         for (let i = 0; i < 12; i++) {
           const { data } = await supabase.auth.getSession();
           if (data.session) {
